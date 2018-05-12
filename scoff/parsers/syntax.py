@@ -14,7 +14,9 @@ class SyntaxCheckerError(ErrorCodeException):
 class SyntaxErrorDescriptor(ErrorDescriptor):
     """Error descriptor."""
 
-    pass
+    def __init__(self, *args):
+        """Initialize."""
+        super().__init__(*args, exception_class=SyntaxCheckerError)
 
 
 class SyntaxChecker(ASTVisitor):

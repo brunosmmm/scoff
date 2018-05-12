@@ -27,7 +27,7 @@ class ErrorDescriptor:
 
     def __init__(self, error_code, brief, fmt_str, exception_class):
         """Initialize."""
-        if not isinstance(exception_class, ErrorCodeException):
+        if not issubclass(exception_class, ErrorCodeException):
             raise TypeError('argument "exception_class" must be an instance '
                             'of type ErrorCodeException')
 

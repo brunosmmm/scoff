@@ -1,47 +1,20 @@
 """Basic Syntax checker pass."""
 
 from .tree import ASTVisitor, VisitError
+from .errors import ErrorCodeException, ErrorDescriptor
 from collections import deque, OrderedDict
 
 
-class SyntaxCheckerError(Exception):
+class SyntaxCheckerError(ErrorCodeException):
     """Syntax checker error."""
 
-    def __init__(self, message, code=None):
-        """Initialize."""
-        self.msg = message
-        self.code = code
-
-    def __repr__(self):
-        """Representation."""
-        if self.code is not None:
-            err_code = '(#{})'.format(self.code)
-        else:
-            err_code = ''
-        return '{} {}'.format(err_code, self.msg)
-
-    def __str__(self):
-        """Get string."""
-        return self.__repr__()
+    pass
 
 
-class SyntaxErrorDescriptor:
+class SyntaxErrorDescriptor(ErrorDescriptor):
     """Error descriptor."""
 
-    def __init__(self, error_code, brief, fmt_str):
-        """Initialize."""
-        self.code = error_code
-        self.brief = brief
-        self.fmt_str = fmt_str
-
-    def get_message(self, **msg_kwargs):
-        """Get error message."""
-        return self.fmt_str.format(**msg_kwargs)
-
-    def get_exception(self, **msg_kwargs):
-        """Get Exception."""
-        err_msg = self.get_message(**msg_kwargs)
-        return SyntaxCheckerError(err_msg, self.code)
+    pass
 
 
 class SyntaxChecker(ASTVisitor):

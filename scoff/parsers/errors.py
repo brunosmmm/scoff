@@ -44,3 +44,14 @@ class ErrorDescriptor:
         """Get Exception."""
         err_msg = self.get_message(**msg_kwargs)
         return self.ex_class(err_msg, self.code)
+
+
+class ErrorGeneratorMixin:
+    """Error generator Mixin."""
+
+    def get_error_from_code(self, code, errors, **msg_kwargs):
+        """Get error from code."""
+        if code not in errors:
+            raise KeyError('unknown error code: {}'.format(code))
+
+        return errors[code].get_message(**msg_kwargs)

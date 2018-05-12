@@ -1,7 +1,7 @@
 """Basic Syntax checker pass."""
 
 from .tree import ASTVisitor, VisitError
-from .errors import ErrorCodeException, ErrorDescriptor
+from .errors import ErrorCodeException, ErrorDescriptor, ErrorGeneratorMixin
 from collections import deque, OrderedDict
 
 
@@ -19,7 +19,7 @@ class SyntaxErrorDescriptor(ErrorDescriptor):
         super().__init__(*args, exception_class=SyntaxCheckerError)
 
 
-class SyntaxChecker(ASTVisitor):
+class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
     """Syntax checks."""
 
     SYNTAX_ERR_GLOBAL_NAME_REDEFINED = 10
@@ -149,10 +149,9 @@ class SyntaxChecker(ASTVisitor):
 
     def get_error_from_code(self, node, code, **msg_kwargs):
         """Get exception from code."""
-        if code not in self._SYNTAX_ERRORS:
-            raise KeyError('unknown error code: {}'.format(code))
-
-        msg = self._SYNTAX_ERRORS[code].get_message(**msg_kwargs)
+        msg = super().get_error_from_code(code,
+                                          self._SYNTAX_ERRORS,
+                                          **msg_kwargs)
         return self.get_error(node, msg, code)
 
     def scoped_symbol_lookup(self, name):

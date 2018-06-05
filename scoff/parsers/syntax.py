@@ -208,3 +208,83 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
                 symbols_by_type[symbol_name] = symbol
 
         return symbols_by_type
+
+
+def enter_scope(fn):
+    """Enter scope."""
+    def wrapper(chk, node):
+        chk._enter_scope(node._tx_position)
+        return fn(chk, node)
+    return wrapper
+
+
+def enter_scope_after(fn):
+    """Enter scope after."""
+    def wrapper(chk, node):
+        ret = fn(chk, node)
+        chk._enter_scope(node._tx_position)
+        return ret
+    return wrapper
+
+
+def exit_scope(fn):
+    """Exit scope."""
+    def wrapper(chk, node):
+        chk._exit_scope(node._tx_position)
+        return fn(chk, node)
+    return wrapper
+
+
+def exit_scope_after(fn):
+    """Exit scope after."""
+    def wrapper(chk, node):
+        ret = fn(chk, node)
+        chk._exit_scope(node._tx_position)
+        return ret
+    return wrapper
+
+
+def auto_collect(fn, node_field):
+    """Automatically collect symbol."""
+    def wrapper(chk, node):
+        if not hasattr(node, node_field):
+            raise RuntimeError('invalid attribute for node: {}'
+                               .format(node_field))
+        chk._collect_symbol(getattr(node, node_field), node)
+    return wrapper
+
+
+class AutoCollect:
+    """Automatically collect symbol."""
+    def __init__(self, node_field):
+        """Initialize."""
+        self._field = node_field
+
+    def __call__(self, fn):
+        """Call."""
+        def wrapper(chk, node):
+            if not hasattr(node, self._field):
+                raise RuntimeError('invalid attribute for node: {}'
+                                   .format(self._field))
+            chk._collect_symbol(getattr(node, self._field), node)
+            return fn(chk, node)
+        return wrapper
+
+
+class AutoCollectConditional:
+    """Automatically collect symbol depending on flag state."""
+    def __init__(self, node_field, chk_flag):
+        """Initialize."""
+        self._field = node_field
+        self._flag = chk_flag
+
+    def __call__(self, fn):
+        """Call."""
+        def wrapper(chk, node):
+            if not hasattr(node, self._field):
+                raise RuntimeError('invalid attribute for node: {}'
+                                   .format(self._field))
+            if chk.get_flag_state(self._flag):
+                chk._collect_symbol(getattr(node, self._field), node)
+            return fn(chk, node)
+        return wrapper

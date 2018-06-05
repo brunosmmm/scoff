@@ -209,6 +209,10 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
 
         return symbols_by_type
 
+    def _clear_collected_scopes(self):
+        """Clear scopes."""
+        self._collected_scopes = OrderedDict()
+
 
 def enter_scope(fn):
     """Enter scope."""

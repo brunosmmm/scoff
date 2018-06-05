@@ -54,4 +54,14 @@ class ErrorGeneratorMixin:
         if code not in errors:
             raise KeyError('unknown error code: {}'.format(code))
 
-        return errors[code].get_message(**msg_kwargs)
+        suffix = ''
+        prefix = ''
+        if '_msg_suffix' in msg_kwargs:
+            suffix = msg_kwargs.pop('_msg_suffix')
+        if '_msg_prefix' in msg_kwargs:
+            prefix = msg_kwargs.pop('_msg_prefix')
+
+        return '{prefix}{msg}{suffix}'.format(
+            prefix=prefix,
+            msg=errors[code].get_message(**msg_kwargs),
+            suffix=suffix)

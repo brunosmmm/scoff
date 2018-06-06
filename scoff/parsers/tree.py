@@ -108,16 +108,22 @@ class ASTVisitor:
         self.add_disallowed_prefixes(*disallowed)
         self._dont_visit = False
         self._flags = {}
+        self._options = {'logger_fn': None}
         self.reset_visits()
         self.clear_flag('debug_visit')
 
         # flags
         self.clear_flag('no_children_visits')
-        for flag_name, flag_value in options.items():
-            if bool(flag_value):
-                self.set_flag(flag_name)
+        for opt_name, opt_value in options.items():
+            if isinstance(opt_value, bool):
+                # save as flag
+                if opt_value is True:
+                    self.set_flag(opt_name)
+                else:
+                    self.clear_flag(opt_name)
             else:
-                self.clear_flag(flag_name)
+                # save as option
+                self.set_option(opt_name, opt_value)
 
     def _debug_visit(self, message):
         """Print debug messages when visiting."""
@@ -155,6 +161,14 @@ class ASTVisitor:
     def clear_flag(self, flag_name):
         """Clear flag."""
         self._flags[flag_name] = False
+
+    def set_option(self, option_name, option_value):
+        """Set option."""
+        self._options[option_name] = option_value
+
+    def get_option(self, option_name):
+        """Get option."""
+        return self._options[option_name]
 
     def get_flag_state(self, flag_name):
         """Get flag state."""

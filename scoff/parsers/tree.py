@@ -104,6 +104,7 @@ class ASTVisitor:
 
     def __init__(self, *disallowed, **options):
         """Initialize."""
+        super().__init__()
         self._not_allowed = set()
         self.add_disallowed_prefixes(*disallowed)
         self._dont_visit = False

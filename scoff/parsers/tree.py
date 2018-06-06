@@ -109,7 +109,7 @@ class ASTVisitor:
         self.add_disallowed_prefixes(*disallowed)
         self._dont_visit = False
         self._flags = {}
-        self._options = {'logger_fn': None}
+        self._options = {}
         self.reset_visits()
         self.clear_flag('debug_visit')
 
@@ -468,6 +468,8 @@ class ASTCopy(ASTVisitor):
                 return node[:]
             elif isinstance(node, bool):
                 return node
+            elif isinstance(node, dict):
+                return node.copy()
             elif node is not None:
-                print('unknown: {}'.format(node))
+                self._debug_visit('unknown: {}'.format(node))
                 return node

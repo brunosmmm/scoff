@@ -128,7 +128,13 @@ class ASTVisitor:
     def _debug_visit(self, message):
         """Print debug messages when visiting."""
         if self.get_flag_state('debug_visit'):
-            print(message)
+            logger_fn = self.get_option('logger_fn')
+            if logger_fn is not None:
+                # call logger function
+                logger_fn(message)
+            else:
+                # print to stdout
+                print(message)
 
     def reset_visits(self):
         """Reset visit record."""

@@ -109,7 +109,7 @@ class ASTVisitor:
         self.add_disallowed_prefixes(*disallowed)
         self._dont_visit = False
         self._flags = {}
-        self._options = {}
+        self._options = {'logger_fn': None}
         self.reset_visits()
         self.clear_flag('debug_visit')
 
@@ -321,6 +321,8 @@ class ASTVisitor:
             if self._dont_visit is False:
                 self._visit_fn_pre(node.__class__.__name__, node)
         except Exception as ex:
+            self._debug_visit('exception caught while visiting: "{}"'
+                              .format(ex))
             raise VisitError(ex)
         try:
             # debug = False
@@ -473,3 +475,77 @@ class ASTCopy(ASTVisitor):
             elif node is not None:
                 self._debug_visit('unknown: {}'.format(node))
                 return node
+
+
+class SetFlag:
+    """Set flag on visit."""
+    def __init__(self, flag_name):
+        """Initialize."""
+        self._flag = flag_name
+
+    def __call__(self, fn):
+        """Call."""
+        def wrapper(tree, node):
+            tree.set_flag(self._flag)
+            return fn(tree, node)
+        return wrapper
+
+
+class SetFlagAfter:
+    """Set flag on visit."""
+    def __init__(self, flag_name):
+        """Initialize."""
+        self._flag = flag_name
+
+    def __call__(self, fn):
+        """Call."""
+        def wrapper(tree, node):
+            ret = fn(tree, node)
+            tree.set_flag(self._flag)
+            return ret
+        return wrapper
+
+
+class ClearFlag:
+    """Clear flag on visit."""
+    def __init__(self, flag_name):
+        """Initialize."""
+        self._flag = flag_name
+
+    def __call__(self, fn):
+        """Call."""
+        def wrapper(tree, node):
+            tree.clear_flag(self._flag)
+            return fn(tree, node)
+        return wrapper
+
+
+class ClearFlagAfter:
+    """Clear flag on visit."""
+    def __init__(self, flag_name):
+        """Initialize."""
+        self._flag = flag_name
+
+    def __call__(self, fn):
+        """Call."""
+        def wrapper(tree, node):
+            ret = fn(tree, node)
+            tree.clear_flag(self._flag)
+            return ret
+        return wrapper
+
+
+class ConditionalVisit:
+    """Conditional visit."""
+    def __init__(self, flag_name):
+        """Initialize."""
+        self._flag = flag_name
+
+    def __call__(self, fn):
+        """Call."""
+        def wrapper(tree, node):
+            if tree.get_flag_state(self._flag) is True:
+                return fn(tree, node)
+            else:
+                return node
+        return wrapper

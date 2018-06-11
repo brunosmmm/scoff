@@ -122,21 +122,25 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
                 return scope
 
     def find_node_line(self, node):
-        """Find line where node is located."""
+        """Find node location."""
         try:
-            getattr(node, '_tx_position')
+            pos = getattr(node, '_tx_position')
         except AttributeError:
             return None
+        return self._find_node_line(node, pos)
+
+    def _find_node_line(self, node, position):
+        """Find line where node is located."""
         current_pos = 0
         for idx, line in enumerate(self._text.split('\n')):
-            if node._tx_position is None:
+            if position is None:
                 return None
-            if current_pos + len(line) < node._tx_position:
+            if current_pos + len(line) < position:
                 current_pos += len(line)
                 continue
             else:
                 if current_pos != 0:
-                    col = (node._tx_position-idx) % current_pos
+                    col = (position-idx) % current_pos
                 else:
                     col = 0
                 return (idx+1, col)

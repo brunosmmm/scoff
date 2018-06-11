@@ -217,6 +217,15 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         """Clear scopes."""
         self._collected_scopes = OrderedDict()
 
+    @classmethod
+    def is_valid_identifier(cls, identifier):
+        """Determine if identifier is valid."""
+        if not hasattr(cls, 'IDENTIFIER_REGEX'):
+            # just return true, we accept all
+            return True
+        m = cls.IDENTIFIER_REGEX.match(identifier)
+        return bool(m is not None)
+
 
 def enter_scope(fn):
     """Enter scope."""

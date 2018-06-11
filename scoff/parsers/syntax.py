@@ -24,6 +24,7 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
 
     SYNTAX_ERR_GLOBAL_NAME_REDEFINED = 10
     SYNTAX_ERR_LOCAL_NAME_REDEFINED = 11
+    SYNTAX_ERR_INVALID_IDENTIFIER = 12
     _SYNTAX_ERRORS = {}
     __SYNTAX_ERRORS = {SYNTAX_ERR_GLOBAL_NAME_REDEFINED:
                        SyntaxErrorDescriptor(SYNTAX_ERR_GLOBAL_NAME_REDEFINED,
@@ -34,7 +35,11 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
                        SyntaxErrorDescriptor(SYNTAX_ERR_LOCAL_NAME_REDEFINED,
                                              'Re-definition of local name',
                                              're-definition of local name'
-                                             ' "{n}"')}
+                                             ' "{n}"'),
+                       SYNTAX_ERR_INVALID_IDENTIFIER:
+                       SyntaxErrorDescriptor(SYNTAX_ERR_INVALID_IDENTIFIER,
+                                             'Invalid identifier',
+                                             'invalid identifier: "{id}"')}
 
     def __init__(self, text, *args, **kwargs):
         """Initialize."""
@@ -93,6 +98,13 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
             enter_loc, self._collected_locals = self._scope_stack.pop()
 
     def _collect_symbol(self, name, node):
+        # verify if identifier is valid
+        if not self.is_valid_identifier(name):
+            raise self.get_error_from_code(
+                node,
+                self.SYNTAX_ERR_INVALID_IDENTIFIER,
+                id=name
+            )
         if len(self._scope_stack) == 0:
             # global symbol
             self._debug_visit('collecting global symbol: "{}"'.format(name))

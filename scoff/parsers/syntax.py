@@ -264,6 +264,7 @@ def auto_collect(fn, node_field):
 
 class AutoCollect:
     """Automatically collect symbol."""
+
     def __init__(self, node_field):
         """Initialize."""
         self._field = node_field
@@ -281,6 +282,7 @@ class AutoCollect:
 
 class AutoCollectConditional:
     """Automatically collect symbol depending on flag state."""
+
     def __init__(self, node_field, chk_flag):
         """Initialize."""
         self._field = node_field

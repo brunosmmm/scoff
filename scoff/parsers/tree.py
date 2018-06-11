@@ -453,7 +453,7 @@ class ASTCopy(ASTVisitor):
                         visit_ret = self._visit(instance)
                         try:
                             visit_ret.parent = class_obj
-                        except:
+                        except Exception:
                             pass
                         ret.append(visit_ret)
                     setattr(class_obj, member, ret)
@@ -461,7 +461,7 @@ class ASTCopy(ASTVisitor):
                     ret = self._visit(getattr(node, member))
                     try:
                         ret.parent = class_obj
-                    except:
+                    except Exception:
                         pass
                     setattr(class_obj, member, ret)
             return class_obj
@@ -479,6 +479,7 @@ class ASTCopy(ASTVisitor):
 
 class SetFlag:
     """Set flag on visit."""
+
     def __init__(self, flag_name):
         """Initialize."""
         self._flag = flag_name
@@ -493,6 +494,7 @@ class SetFlag:
 
 class SetFlagAfter:
     """Set flag on visit."""
+
     def __init__(self, flag_name):
         """Initialize."""
         self._flag = flag_name
@@ -508,6 +510,7 @@ class SetFlagAfter:
 
 class ClearFlag:
     """Clear flag on visit."""
+
     def __init__(self, flag_name):
         """Initialize."""
         self._flag = flag_name
@@ -522,6 +525,7 @@ class ClearFlag:
 
 class ClearFlagAfter:
     """Clear flag on visit."""
+
     def __init__(self, flag_name):
         """Initialize."""
         self._flag = flag_name
@@ -537,6 +541,7 @@ class ClearFlagAfter:
 
 class ConditionalVisit:
     """Conditional visit."""
+
     def __init__(self, flag_name):
         """Initialize."""
         self._flag = flag_name
@@ -549,3 +554,14 @@ class ConditionalVisit:
             else:
                 return node
         return wrapper
+
+
+def trace_visit(fn):
+    """Trace visit."""
+    def wrapper(tree, *args):
+        tree._debug_visit('entering {}, args are: {}'
+                          .format(fn.__name__, args))
+        ret = fn(tree, *args)
+        tree._debug_visit('exiting {}'.format(fn.__name__))
+        return ret
+    return wrapper

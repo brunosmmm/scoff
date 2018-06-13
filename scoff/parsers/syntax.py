@@ -61,6 +61,10 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
             else:
                 self.clear_flag(flag_name)
 
+        if symbols is not None:
+            for symbol_name, symbol in symbols.items():
+                self._collect_symbol(symbol_name, symbol)
+
     def visit(self, node, flag_run=True):
         """Visit node."""
         try:
@@ -97,7 +101,7 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         else:
             enter_loc, self._collected_locals = self._scope_stack.pop()
 
-    def _collect_symbol(self, name, node):
+    def _collect_symbol(self, name, node, globl=False):
         # verify if identifier is valid
         if not self.is_valid_identifier(name):
             raise self.get_error_from_code(
@@ -105,7 +109,7 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
                 self.SYNTAX_ERR_INVALID_IDENTIFIER,
                 id=name
             )
-        if len(self._scope_stack) == 0:
+        if len(self._scope_stack) == 0 or globl is True:
             # global symbol
             self._debug_visit('collecting global symbol: "{}"'.format(name))
             if name in self._collected_globals:

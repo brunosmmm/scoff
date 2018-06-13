@@ -376,10 +376,12 @@ class ASTVisitor:
                             node_dict[attr_name][idx+insertion_offset] = result
                             # setattr(node, attr_name, attr)
 
+                    deletion_offset = 0
                     for idx in to_delete:
                         try:
-                            del node_dict[attr_name][idx]
-                        except:
+                            del node_dict[attr_name][idx+deletion_offset]
+                            deletion_offset -= 1
+                        except Exception:
                             # couldn't delete!
                             pass
         except (AttributeError, NoChildrenVisits):

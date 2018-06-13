@@ -48,7 +48,7 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         self._SYNTAX_ERRORS.update(self.__SYNTAX_ERRORS)
         self._initialize()
 
-    def _initialize(self, **flags):
+    def _initialize(self, symbols=None, **flags):
         # (re)initialize
         self._pass_run = False
         self._collected_globals = OrderedDict()

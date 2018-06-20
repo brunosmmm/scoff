@@ -1,6 +1,7 @@
 """General Parser utilities."""
 
 import textwrap
+import re
 
 
 class VisitError(Exception):
@@ -285,7 +286,7 @@ class ASTVisitor:
 
     def _check_visit_allowed(self, name):
         for disallowed in self._not_allowed:
-            if name.startswith(disallowed):
+            if re.match(disallowed, name) is not None:
                 return False
 
         return True

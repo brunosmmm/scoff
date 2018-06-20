@@ -8,7 +8,7 @@ class NodeRemover(ASTVisitor):
 
     def __init__(self, *node_types, **flags):
         """Initialize."""
-        super().__init__('_', 'parent', **flags)
+        super().__init__('_.*', 'parent$', **flags)
         self._node_types = node_types
 
     def _visit_and_modify(self, node, attr=None):

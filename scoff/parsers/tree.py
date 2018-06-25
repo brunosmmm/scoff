@@ -545,14 +545,20 @@ class ClearFlagAfter:
 class ConditionalVisit:
     """Conditional visit."""
 
-    def __init__(self, flag_name):
+    def __init__(self, flag_name, inverted=False):
         """Initialize."""
         self._flag = flag_name
+        self._inverted = inverted
 
     def __call__(self, fn):
         """Call."""
         def wrapper(tree, node):
-            if tree.get_flag_state(self._flag) is True:
+            if self._inverted is True:
+                if tree.get_flag_state(self._flag) is False:
+                    return fn(tree, node)
+                else:
+                    return node
+            elif tree.get_flag_state(self._flag) is True:
                 return fn(tree, node)
             else:
                 return node
@@ -566,5 +572,23 @@ def trace_visit(fn):
                           .format(fn.__name__, args))
         ret = fn(tree, *args)
         tree._debug_visit('exiting {}'.format(fn.__name__))
+        return ret
+    return wrapper
+
+
+def stop_visiting(fn):
+    """No further visits."""
+    def wrapper(tree, *args):
+        ret = fn(tree, *args)
+        tree.set_flag('stop_visit')
+        return ret
+    return wrapper
+
+
+def no_child_visits(fn):
+    """No children visits."""
+    def wrapper(tree, *args):
+        ret = fn(tree, *args)
+        tree.set_flag('no_children_visits')
         return ret
     return wrapper

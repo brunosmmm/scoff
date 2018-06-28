@@ -181,7 +181,7 @@ class ASTVisitor:
     def get_flag_state(self, flag_name):
         """Get flag state."""
         if flag_name not in self._flags:
-            return None
+            return False
 
         return self._flags[flag_name]
 

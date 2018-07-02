@@ -3,7 +3,7 @@
 
 def indent(fn):
     """Indent decorator."""
-    def wrapper(*args):
+    def wrapper(*args, **kwargs):
         if not isinstance(args[0], CodeGenerator):
             raise TypeError('decorator can only be used on CodeGenerator '
                             'objects')
@@ -14,7 +14,11 @@ def indent(fn):
         else:
             indent_str = ''
 
-        ret = '\n'.join([indent_str + x for x in fn(*args).split('\n')])
+        if 'dont_indent' in kwargs and kwargs['dont_indent'] is True:
+            return fn(*args, **kwargs)
+        else:
+            ret = '\n'.join([indent_str + x for x in fn(*args,
+                                                        **kwargs).split('\n')])
         args[0].decrease_indent()
         return ret
     return wrapper

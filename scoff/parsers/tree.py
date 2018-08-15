@@ -334,7 +334,13 @@ class ASTVisitor:
                 # get out
                 raise NoChildrenVisits()
 
-            for attr_name in list(node_dict):
+            if self.get_flag_state('reverse_visit'):
+                visit_list = list(node_dict)[::-1]
+                self.clear_flag('reverse_visit')
+            else:
+                visit_list = list(node_dict)
+
+            for attr_name in visit_list:
                 if self._check_visit_allowed(attr_name) is False:
                     continue
 
@@ -590,5 +596,14 @@ def no_child_visits(fn):
     def wrapper(tree, *args):
         ret = fn(tree, *args)
         tree.set_flag('no_children_visits')
+        return ret
+    return wrapper
+
+
+def reverse_visit_order(fn):
+    """Reverse visit order."""
+    def wrapper(tree, *args):
+        ret = fn(tree, *args)
+        tree.set_flag('reverse_visit')
         return ret
     return wrapper

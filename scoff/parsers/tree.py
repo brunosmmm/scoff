@@ -2,14 +2,23 @@
 
 import textwrap
 import re
+import sys
+import os
 
 
 class VisitError(Exception):
     """Exception while visiting."""
 
-    def __init__(self, original_exception):
+    def __init__(self, original_exception, ex_info=None):
         """Initialize."""
         self.ex = original_exception
+        if ex_info is not None:
+            ex_fname = os.path.split(ex_info.tb_frame.f_code.co_filename)[1]
+            self.ex_fname = ex_fname
+            self.ex_lineno = ex_info.tb_lineno
+        else:
+            self.ex_fname = None
+            self.ex_lineno = None
 
     def find_embedded_exception(self):
         """Find an exception that is not VisitError."""
@@ -324,7 +333,8 @@ class ASTVisitor:
         except Exception as ex:
             self._debug_visit('exception caught while visiting: "{}"'
                               .format(ex))
-            raise VisitError(ex)
+            ex_info = sys.exc_info()[-1]
+            raise VisitError(ex, ex_info)
         try:
             # debug = False
             node_dict = getattr(node, '__dict__')
@@ -402,7 +412,8 @@ class ASTVisitor:
             else:
                 return node
         except Exception as ex:
-            raise VisitError(ex)
+            ex_info = sys.exc_info()[-1]
+            raise VisitError(ex, ex_info)
         return ret
 
     def is_child_of_type(self, node, type_name):
@@ -450,6 +461,20 @@ class ASTCopy(ASTVisitor):
             empty_members = {member_name: None for member_name, value in
                              node_dict.items()
                              if self._check_visit_allowed(member_name)}
+            if hasattr(node, '_tx_position'):
+                original_start_loc = node._tx_position
+            else:
+                original_start_loc = None
+            if hasattr(node, '_tx_position_end'):
+                original_end_loc = node._tx_position_end
+            else:
+                original_end_loc = None
+            empty_members.update({'SCOFF_META':
+                                  {
+                                      'ast_copy': True,
+                                      'original_start_loc': original_start_loc,
+                                      'original_end_loc': original_end_loc
+                                  }})
             class_obj = make_ast_object(node.__class__.__name__,
                                         None,
                                         **empty_members)

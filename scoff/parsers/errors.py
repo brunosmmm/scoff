@@ -4,10 +4,11 @@
 class ErrorCodeException(Exception):
     """Exception with error code."""
 
-    def __init__(self, message, code=None):
+    def __init__(self, message, code=None, exception=None):
         """Initialize."""
         self.msg = message
         self.code = code
+        self.exception = exception
 
     def __repr__(self):
         """Representation."""

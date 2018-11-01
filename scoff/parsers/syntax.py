@@ -145,10 +145,10 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
             return None
         return self._find_node_line(node, pos)
 
-    def _find_node_line(self, node, position):
-        """Find line where node is located."""
+    @staticmethod
+    def find_node_line_in_text(txt, position):
         current_pos = 0
-        for idx, line in enumerate(self._text.split('\n')):
+        for idx, line in enumerate(txt.split('\n')):
             if position is None:
                 return None
             if current_pos + len(line) < position:
@@ -161,18 +161,26 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
                     col = 0
                 return (idx+1, col)
 
-    def get_error(self, node, message, code=None):
+    def _find_node_line(self, node, position):
+        """Find line where node is located."""
+        return self.find_node_line_in_text(self._text, position)
+
+    def get_error(self, node, message, code=None, exception=None):
         """Get syntax error exception."""
         return SyntaxCheckerError('at {}: {}'.
                                   format(self.find_node_line(node),
-                                         message), code)
+                                         message), code, exception)
 
     def get_error_from_code(self, node, code, **msg_kwargs):
         """Get exception from code."""
+        if '_exception' in msg_kwargs:
+            exception = msg_kwargs.pop('_exception')
+        else:
+            exception = None
         msg = super().get_error_from_code(code,
                                           self._SYNTAX_ERRORS,
                                           **msg_kwargs)
-        return self.get_error(node, msg, code)
+        return self.get_error(node, msg, code, exception)
 
     def scoped_symbol_lookup(self, name):
         """In-scope Symbol lookup."""

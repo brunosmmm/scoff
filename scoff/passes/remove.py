@@ -9,17 +9,12 @@ class NodeRemover(ASTVisitor):
     def __init__(self, *node_types, **flags):
         """Initialize."""
         super().__init__('_.*', 'parent$', **flags)
-        self._node_types = node_types
+        for node_type in node_types:
+            setattr(self, 'visit_{}'.format(node_type), self._delete_node)
 
-    def _visit_and_modify(self, node, attr=None):
-        if node.__class__.__name__ in self._node_types:
-            if attr is not None:
-                self._debug_visit('removing node attribute: {}'.format(attr))
-                setattr(node, attr, None)
-            else:
-                self._debug_visit('removing node {}'.format(node))
-                return None
-        return node
+    def _delete_node(self, node):
+        self._debug_visit('removing node {}'.format(node))
+        return None
 
 
 class ConditionalNodeRemover(NodeRemover):
@@ -30,16 +25,8 @@ class ConditionalNodeRemover(NodeRemover):
         super().__init__(node_type, **flags)
         self._decide_cb = decide_fn
 
-    def _visit_and_modify(self, node, attr=None):
-        if self.is_of_type(node, self._node_types[0]):
-            if attr is not None:
-                if self._decide_cb(node):
-                    self._debug_visit('removing node attribute: {}'
-                                      .format(attr))
-                    setattr(node, attr, None)
-            else:
-                if self._decide_cb(node):
-                    self._debug_visit('removing node: {}'.format(node))
-                    return None
+    def _delete_node(self, node):
+        if self._decide_cb(node):
+            return super()._delete_node(node)
 
         return node

@@ -4,6 +4,10 @@ import textwrap
 import re
 import sys
 import os
+from collections import namedtuple, deque
+
+# Visit history object
+VisitHistory = namedtuple('VisitHistory', ['node', 'replaces', 'depth'])
 
 
 class VisitError(Exception):
@@ -116,10 +120,14 @@ class ASTVisitor:
         """Initialize."""
         super().__init__()
         self._not_allowed = set()
+        self._allowed_visits = set()
+        self.__visiting = False
         self.add_disallowed_prefixes(*disallowed)
         self._dont_visit = False
-        self._flags = {}
-        self._options = {'logger_fn': None}
+        self._visit_depth = 0
+        self._visit_history = deque()
+        self._flags = {'exclusive_visit': False, 'minimal_depth': False}
+        self._options = {'logger_fn': None, 'history_len': 0}
         self.reset_visits()
         self.clear_flag('debug_visit')
 
@@ -135,6 +143,21 @@ class ASTVisitor:
             else:
                 # save as option
                 self.set_option(opt_name, opt_value)
+
+        # pre-allocate visit function table
+        methods = [name for name in dir(self)
+                   if callable(getattr(self, name))]
+
+        # visit function table
+        self.__visit_fn_table = {}
+        self.__visit_fn_pre_table = {}
+
+        # exclusive visits
+        if self.get_flag_state('exclusive_visit'):
+            self.set_flag('minimal_depth')
+            self._allowed_visits = set(['^{}$'.format(name.lstrip('visit_'))
+                                        for name in methods
+                                        if name.startswith('visit_')])
 
     def _debug_visit(self, message):
         """Print debug messages when visiting."""
@@ -153,7 +176,15 @@ class ASTVisitor:
 
     def add_disallowed_prefixes(self, *prefixes):
         """Disallow visiting of attributes with a prefix."""
+        if self.__visiting is True:
+            raise VisitError('cannot alter disallowed prefixes while visiting')
         self._not_allowed |= set(prefixes)
+
+    def add_allowed_prefixes(self, *prefixes):
+        """Add allowed prefixes."""
+        if self.__visiting is True:
+            raise VisitError('cannot alter allowed prefixes while visiting')
+        self._allowed_visits |= set(prefixes)
 
     def pause_visiting(self):
         """Stop visiting temporarily."""
@@ -170,6 +201,16 @@ class ASTVisitor:
     def has_been_visited(self, node):
         """Check if a node has been visited before."""
         return node in self._visited_nodes
+
+    def get_last_visited(self):
+        """Get last visited node."""
+        last_visit = self._visit_history.popleft()
+        self._visit_history.append(last_visit)
+        return last_visit
+
+    def get_visit_history(self):
+        """Get visit history."""
+        return self._visit_history
 
     def set_flag(self, flag_name):
         """Set flag."""
@@ -205,7 +246,7 @@ class ASTVisitor:
             if inclusive:
                 return node
 
-        node_dict = getattr(node, '__dict__')
+        node_dict = node.__dict__
         for attr_name, attr in node_dict.items():
             if self._check_visit_allowed(attr_name):
                 if self.is_of_type(attr, node_type):
@@ -224,7 +265,7 @@ class ASTVisitor:
 
     def get_all_occurrences(self, root, node_type):
         """Find all nodes of a type."""
-        node_dict = getattr(root, '__dict__')
+        node_dict = root.__dict__
         occurrences = []
         for attr_name, attr in node_dict.items():
             if self._check_visit_allowed(attr_name):
@@ -242,13 +283,21 @@ class ASTVisitor:
 
         return occurrences
 
+    def _store_visit(self, visit_history):
+        """Store visit."""
+        history_len = self.get_option('history_len')
+        if history_len == 0:
+            return
+        if len(self._visit_history) == history_len:
+            self._visit_history.popleft()
+        self._visit_history.append(visit_history)
+
     def _visit_fn_post(self, cls_name, node):
         """Call corresponding function if present."""
-        # print('exiting {}'.format(cls_name))
-        try:
-            fn = getattr(self, 'visit_{}'.format(cls_name))
-        except AttributeError:
+        if cls_name not in self.__visit_fn_table:
             return self._visit_default(node)
+
+        fn = self.__visit_fn_table[cls_name]
 
         # check if visited before
         if self.has_been_visited(node):
@@ -260,43 +309,78 @@ class ASTVisitor:
         return fn(node)
 
     def _visit_fn_pre(self, cls_name, node):
-        # print('entering {}'.format(cls_name))
-        try:
-            fn = getattr(self, 'visitPre_{}'.format(cls_name))
-        except AttributeError:
+        if cls_name not in self.__visit_pre_fn_table:
             return self._visit_pre_default(node)
+
+        fn = self.__visit_pre_fn_table[cls_name]
 
         # check if visited before
         if self.has_been_visited(node):
             if self.get_flag_state('ignore_visited'):
                 return node
 
+        # do not visit children if we are visiting this node
+        # but have the minimal depth flag
+        if self.get_flag_state('minimal_depth'):
+            if cls_name in self.__visit_fn_table:
+                self.set_flag('no_children_visits')
+
         return fn(node)
 
     def visit(self, node):
         """Start visting at a certain node."""
-        return self._visit(node)
+        def strip_name(name, prefix):
+            return name[len(prefix):] if name.startswith(prefix) else name
+        # pre-allocate visit function table
+        methods = [name for name in dir(self)
+                   if callable(getattr(self, name))]
+
+        # visit function table
+        self.__visit_fn_table = {strip_name(name, 'visit_'):
+                                 getattr(self, name)
+                                 for name in methods
+                                 if name.startswith('visit_')}
+        self.__visit_pre_fn_table = {strip_name(name, 'visitPre_'):
+                                     getattr(self, name)
+                                     for name in methods
+                                     if name.startswith('visitPre_')}
+
+        # pre-compile regular expressions
+        self.__not_allowed_matches = [re.compile(disallowed) for disallowed
+                                      in self._not_allowed]
+        self.__allowed_matches = [re.compile(allowed) for allowed
+                                  in self._allowed_visits]
+        self.__visiting = True
+        ret = self._visit(node)
+        self.__visiting = False
+        return ret
 
     def _visit_default(self, node):
-        try:
-            fn = getattr(self, 'visit_Default')
-        except AttributeError:
+        if 'Default' not in self.__visit_fn_table:
             return node
+
+        fn = self.__visit_fn_table['Default']
 
         return fn(node)
 
     def _visit_pre_default(self, node):
-        try:
-            fn = getattr(self, 'visitPre_Default')
-        except AttributeError:
+        if 'Default' not in self.__visit_fn_pre_table:
             return None
+
+        fn = self.__visit_fn_pre_table['Default']
 
         return fn(node)
 
     def _check_visit_allowed(self, name):
-        for disallowed in self._not_allowed:
-            if re.match(disallowed, name) is not None:
-                return False
+        if self.get_flag_state('exclusive_visit'):
+            for allowed in self.__allowed_matches:
+                if allowed.match(name) is not None:
+                    return True
+            return False
+        else:
+            for disallowed in self.__not_allowed_matches:
+                if disallowed.match(name) is not None:
+                    return False
 
         return True
 
@@ -326,6 +410,7 @@ class ASTVisitor:
 
     def _visit(self, node):
         """Start visting at a certain node."""
+        self._visit_depth += 1
         # call before visiting, cannot modify things
         try:
             if self._dont_visit is False:
@@ -337,7 +422,7 @@ class ASTVisitor:
             raise VisitError(ex, ex_info)
         try:
             # debug = False
-            node_dict = getattr(node, '__dict__')
+            node_dict = node.__dict__
             if self.get_flag_state('no_children_visits'):
                 # reset
                 self.clear_flag('no_children_visits')
@@ -410,17 +495,23 @@ class ASTVisitor:
             if self._dont_visit is False:
                 ret = self._visit_fn_post(node.__class__.__name__, node)
             else:
+                self._visit_depth -= 1
                 return node
         except Exception as ex:
             ex_info = sys.exc_info()[-1]
             raise VisitError(ex, ex_info)
+        # store as last visited node
+        if node == ret:
+            replaces = None
+        else:
+            replaces = node
+        self._store_visit(VisitHistory(ret, replaces, self._visit_depth))
+        self._visit_depth -= 1
         return ret
 
     def is_child_of_type(self, node, type_name):
         """Detect if parent of type is available."""
-        try:
-            getattr(node, 'parent')
-        except AttributeError:
+        if not hasattr(node, 'parent'):
             return False
         if node.parent is not None:
             if node.parent.__class__.__name__ == type_name:
@@ -431,9 +522,7 @@ class ASTVisitor:
 
     def find_parent_by_type(self, node, parent_type, level=1):
         """Find nth hierarchical ocurrence of type, upwards."""
-        try:
-            getattr(node, 'parent')
-        except AttributeError:
+        if not hasattr(node, 'parent'):
             return None
         if node.parent is not None:
             if node.parent.__class__.__name__ == parent_type:
@@ -457,7 +546,7 @@ class ASTCopy(ASTVisitor):
     def _visit(self, node):
 
         try:
-            node_dict = getattr(node, '__dict__')
+            node_dict = node.__dict__
             empty_members = {member_name: None for member_name, value in
                              node_dict.items()
                              if self._check_visit_allowed(member_name)}

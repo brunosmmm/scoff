@@ -128,6 +128,7 @@ class ASTVisitor:
         self._visit_history = deque()
         self._flags = {'exclusive_visit': False, 'minimal_depth': False}
         self._options = {'logger_fn': None, 'history_len': 0}
+        self._hooks = {}
         self.reset_visits()
         self.clear_flag('debug_visit')
 
@@ -153,6 +154,8 @@ class ASTVisitor:
         self.__visit_fn_pre_table = {}
 
         # exclusive visits
+        self.__allowed_matches = []
+        self.__not_allowed_matches = []
         if self.get_flag_state('exclusive_visit'):
             self.set_flag('minimal_depth')
             self._allowed_visits = set(['^{}$'.format(name.lstrip('visit_'))
@@ -185,6 +188,13 @@ class ASTVisitor:
         if self.__visiting is True:
             raise VisitError('cannot alter allowed prefixes while visiting')
         self._allowed_visits |= set(prefixes)
+
+    def add_visit_hook(self, node_cls_name, method):
+        """Add external hook to call when a certain class is visited."""
+        if node_cls_name not in self._hooks:
+            self._hooks[node_cls_name] = set()
+
+        self._hooks[node_cls_name] |= set([method])
 
     def pause_visiting(self):
         """Stop visiting temporarily."""
@@ -292,10 +302,19 @@ class ASTVisitor:
             self._visit_history.popleft()
         self._visit_history.append(visit_history)
 
+    def _call_visit_hooks(self, cls_name, node):
+        """Call registered hooks."""
+        if cls_name not in self._hooks:
+            return
+        for hook in self._hooks[cls_name]:
+            hook(node)
+
     def _visit_fn_post(self, cls_name, node):
         """Call corresponding function if present."""
         if cls_name not in self.__visit_fn_table:
-            return self._visit_default(node)
+            ret = self._visit_default(node)
+            self._call_visit_hooks(cls_name, node)
+            return ret
 
         fn = self.__visit_fn_table[cls_name]
 
@@ -306,7 +325,9 @@ class ASTVisitor:
         else:
             self._visited_nodes |= set([node])
 
-        return fn(node)
+        ret = fn(node)
+        self._call_visit_hooks(cls_name, node)
+        return ret
 
     def _visit_fn_pre(self, cls_name, node):
         if cls_name not in self.__visit_pre_fn_table:

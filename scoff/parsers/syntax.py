@@ -137,6 +137,10 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
             if symbol == node:
                 return scope
 
+    def get_current_scope_depth(self):
+        """Get current scope depth."""
+        return len(self._scope_stack)
+
     def find_node_line(self, node):
         """Find node location."""
         try:
@@ -185,29 +189,26 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
     def scoped_symbol_lookup(self, name):
         """In-scope Symbol lookup."""
         # locals first
-        for symbol_name, symbol in self._collected_locals.items():
-            if symbol_name == name:
-                return symbol
+        if name in self._collected_locals:
+            return self._collected_locals[name]
         for location, scope in self._scope_stack:
-            for symbol_name, symbol in scope.items():
-                if name == symbol_name:
-                    return symbol
-        for symbol_name, symbol in self._collected_globals.items():
-            if name == symbol_name:
-                return symbol
+            if name in scope:
+                return scope[name]
+        if name in self._collected_globals:
+            return self._collected_globals[name]
+
         return None
 
     def _symbol_lookup(self, name):
         """Overall symbol lookup."""
         ret = []
-        for symbol_name, symbol in self._collected_globals.items():
-            if name == symbol_name:
-                ret.append([symbol, self._collected_globals])
+        if name in self._collected_globals:
+            ret.append([self._collected_globals[name],
+                        self._collected_globals])
 
         for location, (end_loc, scope) in self._collected_scopes.items():
-            for symbol_name, symbol in scope.items():
-                if name == symbol_name:
-                    ret.append([symbol, scope])
+            if name in scope:
+                ret.append([scope[name], scope])
 
         return ret
 

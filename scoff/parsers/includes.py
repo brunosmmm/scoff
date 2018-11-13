@@ -4,12 +4,16 @@ import os.path
 import hashlib
 
 
+class IncludeAlreadyVisitedError(Exception):
+    """Include already visited error."""
+
+
 class IncludeManagerMixin:
     """Include manager mixin."""
 
-    def __init__(self, text, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """Initialize."""
-        super().__init__(text, *args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._include_paths = ['']
         self._visited_includes = []
 
@@ -40,7 +44,7 @@ class IncludeManagerMixin:
         file_md5 = self.md5_hash(file_location)
         if file_md5 in self._visited_includes:
             # ignore
-            raise RuntimeError('file already included/imported')
+            raise IncludeAlreadyVisitedError('file already included/imported')
 
         # prevent double inclusion
         self._visited_includes.append(file_md5)

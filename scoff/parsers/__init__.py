@@ -10,3 +10,5 @@ class ScoffASTObject:
         """Initialize."""
         if "SCOFF_META" in kwargs:
             self.SCOFF_META = kwargs.pop("SCOFF_META")
+        for name, value in kwargs.items():
+            setattr(self, name, value)

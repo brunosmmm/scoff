@@ -5,9 +5,10 @@ import re
 import sys
 import os
 from collections import namedtuple, deque
+from . import ScoffASTObject
 
 # Visit history object
-VisitHistory = namedtuple('VisitHistory', ['node', 'replaces', 'depth'])
+VisitHistory = namedtuple("VisitHistory", ["node", "replaces", "depth"])
 
 
 class VisitError(Exception):
@@ -41,30 +42,41 @@ def make_ast_class(class_name, subclass_of, **members):
     _global = {}
     _local = {}
     # comply with textX stuff being used
-    members.update({'_tx_position': None})
+    members.update({"_tx_position": None})
     if subclass_of is None:
-        class_decl = 'class {}:\n'.format(class_name)
+        class_decl = "class {}:\n".format(class_name)
     else:
-        class_decl = 'class {}({}):\n'.format(class_name,
-                                              subclass_of.__name__)
+        class_decl = "class {}({}):\n".format(class_name, subclass_of.__name__)
         _global = {subclass_of.__name__: subclass_of}
-    member_decl = '\n'.join(['{} = {}'.format(name, value)
-                             for name, value
-                             in members.items()])
+    member_decl = "\n".join(
+        ["{} = {}".format(name, value) for name, value in members.items()]
+    )
 
-    exec(class_decl + textwrap.indent(member_decl, '    '),
-         _global, _local)
+    exec(class_decl + textwrap.indent(member_decl, "    "), _global, _local)
 
     return _local[class_name]
 
 
-def make_ast_object(class_name, subclass_of, *init_args, **members):
+def make_ast_object(cls, subclass_of, *init_args, **members):
     """Make object."""
-    cls = make_ast_class(class_name, subclass_of, _dummy_ast=True)
-    obj = cls(*init_args)
 
-    for name, value in members.items():
-        setattr(obj, name, value)
+    def fake_class_obj(cls_name):
+        cls = make_ast_class(cls_name, subclass_of, _dummy_ast=True)
+        obj = cls(*init_args)
+        for name, value in members.items():
+            setattr(obj, name, value)
+
+        return obj
+
+    if isinstance(cls, str):
+        obj = fake_class_obj(cls)
+    elif isinstance(cls, type):
+        if not issubclass(cls, ScoffASTObject):
+            obj = fake_class_obj(cls.__name__)
+        else:
+            if "parent" not in members:
+                members["parent"] = None
+            obj = cls(**members)
 
     return obj
 
@@ -73,7 +85,7 @@ def make_ast(tree_dict, parent_name=None, depth=0):
     """Make an ast from scratch."""
     if len(tree_dict) != 1 and depth == 0:
         # error
-        raise RuntimeError('only one root node allowed')
+        raise RuntimeError("only one root node allowed")
 
     if depth == 0:
         root_name, tree_dict = next(iter(tree_dict.items()))
@@ -82,13 +94,13 @@ def make_ast(tree_dict, parent_name=None, depth=0):
     for node_name, node_child in tree_dict.items():
         if isinstance(node_child, dict):
             # a class
-            sub_tree = make_ast(node_child, node_name, depth+1)
+            sub_tree = make_ast(node_child, node_name, depth + 1)
             children[node_name] = sub_tree
         elif isinstance(node_child, list):
             # several children
             child_list = []
             for child in node_child:
-                sub_tree = make_ast(child, node_name, depth+1)
+                sub_tree = make_ast(child, node_name, depth + 1)
                 child_list.append(sub_tree)
             if len(child_list) == 1:
                 child_list = child_list[0]
@@ -106,9 +118,7 @@ def make_ast(tree_dict, parent_name=None, depth=0):
         if len(ret) == 1:
             ret, = ret
     else:
-        ret = make_ast_object(cls_name,
-                              None,
-                              **children)
+        ret = make_ast_object(cls_name, None, **children)
 
     return ret
 
@@ -126,14 +136,14 @@ class ASTVisitor:
         self._dont_visit = False
         self._visit_depth = 0
         self._visit_history = deque()
-        self._flags = {'exclusive_visit': False, 'minimal_depth': False}
-        self._options = {'logger_fn': None, 'history_len': 0}
+        self._flags = {"exclusive_visit": False, "minimal_depth": False}
+        self._options = {"logger_fn": None, "history_len": 0}
         self._hooks = {}
         self.reset_visits()
-        self.clear_flag('debug_visit')
+        self.clear_flag("debug_visit")
 
         # flags
-        self.clear_flag('no_children_visits')
+        self.clear_flag("no_children_visits")
         for opt_name, opt_value in options.items():
             if isinstance(opt_value, bool):
                 # save as flag
@@ -146,8 +156,7 @@ class ASTVisitor:
                 self.set_option(opt_name, opt_value)
 
         # pre-allocate visit function table
-        methods = [name for name in dir(self)
-                   if callable(getattr(self, name))]
+        methods = [name for name in dir(self) if callable(getattr(self, name))]
 
         # visit function table
         self.__visit_fn_table = {}
@@ -156,16 +165,20 @@ class ASTVisitor:
         # exclusive visits
         self.__allowed_matches = []
         self.__not_allowed_matches = []
-        if self.get_flag_state('exclusive_visit'):
-            self.set_flag('minimal_depth')
-            self._allowed_visits = set(['^{}$'.format(name.lstrip('visit_'))
-                                        for name in methods
-                                        if name.startswith('visit_')])
+        if self.get_flag_state("exclusive_visit"):
+            self.set_flag("minimal_depth")
+            self._allowed_visits = set(
+                [
+                    "^{}$".format(name.lstrip("visit_"))
+                    for name in methods
+                    if name.startswith("visit_")
+                ]
+            )
 
     def _debug_visit(self, message):
         """Print debug messages when visiting."""
-        if self.get_flag_state('debug_visit'):
-            logger_fn = self.get_option('logger_fn')
+        if self.get_flag_state("debug_visit"):
+            logger_fn = self.get_option("logger_fn")
             if logger_fn is not None:
                 # call logger function
                 logger_fn(message)
@@ -180,13 +193,13 @@ class ASTVisitor:
     def add_disallowed_prefixes(self, *prefixes):
         """Disallow visiting of attributes with a prefix."""
         if self.__visiting is True:
-            raise VisitError('cannot alter disallowed prefixes while visiting')
+            raise VisitError("cannot alter disallowed prefixes while visiting")
         self._not_allowed |= set(prefixes)
 
     def add_allowed_prefixes(self, *prefixes):
         """Add allowed prefixes."""
         if self.__visiting is True:
-            raise VisitError('cannot alter allowed prefixes while visiting')
+            raise VisitError("cannot alter allowed prefixes while visiting")
         self._allowed_visits |= set(prefixes)
 
     def add_visit_hook(self, node_cls_name, method):
@@ -206,7 +219,7 @@ class ASTVisitor:
 
     def dont_visit_children(self):
         """Don't visit children of this node."""
-        self.set_flag('no_children_visits')
+        self.set_flag("no_children_visits")
 
     def has_been_visited(self, node):
         """Check if a node has been visited before."""
@@ -281,21 +294,23 @@ class ASTVisitor:
             if self._check_visit_allowed(attr_name):
                 if self.is_of_type(attr, node_type):
                     occurrences.append(attr)
-                elif isinstance(attr, list):
+                elif isinstance(attr, (list, tuple)):
                     for obj in attr:
-                        occurrences.extend(self.get_all_occurrences(obj,
-                                                                    node_type))
+                        occurrences.extend(
+                            self.get_all_occurrences(obj, node_type)
+                        )
                 elif isinstance(attr, str):
                     return []
                 else:
-                    occurrences.extend(self.get_all_occurrences(attr,
-                                                                node_type))
+                    occurrences.extend(
+                        self.get_all_occurrences(attr, node_type)
+                    )
 
         return occurrences
 
     def _store_visit(self, visit_history):
         """Store visit."""
-        history_len = self.get_option('history_len')
+        history_len = self.get_option("history_len")
         if history_len == 0:
             return
         if len(self._visit_history) == history_len:
@@ -320,7 +335,7 @@ class ASTVisitor:
 
         # check if visited before
         if self.has_been_visited(node):
-            if self.get_flag_state('ignore_visited'):
+            if self.get_flag_state("ignore_visited"):
                 return node
         else:
             self._visited_nodes |= set([node])
@@ -337,63 +352,68 @@ class ASTVisitor:
 
         # check if visited before
         if self.has_been_visited(node):
-            if self.get_flag_state('ignore_visited'):
+            if self.get_flag_state("ignore_visited"):
                 return node
 
         # do not visit children if we are visiting this node
         # but have the minimal depth flag
-        if self.get_flag_state('minimal_depth'):
+        if self.get_flag_state("minimal_depth"):
             if cls_name in self.__visit_fn_table:
-                self.set_flag('no_children_visits')
+                self.set_flag("no_children_visits")
 
         return fn(node)
 
     def visit(self, node):
         """Start visting at a certain node."""
+
         def strip_name(name, prefix):
-            return name[len(prefix):] if name.startswith(prefix) else name
+            return name[len(prefix) :] if name.startswith(prefix) else name
+
         # pre-allocate visit function table
-        methods = [name for name in dir(self)
-                   if callable(getattr(self, name))]
+        methods = [name for name in dir(self) if callable(getattr(self, name))]
 
         # visit function table
-        self.__visit_fn_table = {strip_name(name, 'visit_'):
-                                 getattr(self, name)
-                                 for name in methods
-                                 if name.startswith('visit_')}
-        self.__visit_pre_fn_table = {strip_name(name, 'visitPre_'):
-                                     getattr(self, name)
-                                     for name in methods
-                                     if name.startswith('visitPre_')}
+        self.__visit_fn_table = {
+            strip_name(name, "visit_"): getattr(self, name)
+            for name in methods
+            if name.startswith("visit_")
+        }
+        self.__visit_pre_fn_table = {
+            strip_name(name, "visitPre_"): getattr(self, name)
+            for name in methods
+            if name.startswith("visitPre_")
+        }
 
         # pre-compile regular expressions
-        self.__not_allowed_matches = [re.compile(disallowed) for disallowed
-                                      in self._not_allowed]
-        self.__allowed_matches = [re.compile(allowed) for allowed
-                                  in self._allowed_visits]
+        self.__not_allowed_matches = [
+            re.compile(disallowed) for disallowed in self._not_allowed
+        ]
+        self.__allowed_matches = [
+            re.compile(allowed) for allowed in self._allowed_visits
+        ]
         self.__visiting = True
         ret = self._visit(node)
         self.__visiting = False
         return ret
 
     def _visit_default(self, node):
-        if 'Default' not in self.__visit_fn_table:
+        if "Default" not in self.__visit_fn_table:
             return node
 
-        fn = self.__visit_fn_table['Default']
+        fn = self.__visit_fn_table["Default"]
 
         return fn(node)
 
     def _visit_pre_default(self, node):
-        if 'Default' not in self.__visit_fn_pre_table:
+        if "Default" not in self.__visit_fn_pre_table:
             return None
 
-        fn = self.__visit_fn_pre_table['Default']
+        fn = self.__visit_fn_pre_table["Default"]
 
         return fn(node)
 
     def _check_visit_allowed(self, name):
-        if self.get_flag_state('exclusive_visit'):
+        if self.get_flag_state("exclusive_visit"):
             for allowed in self.__allowed_matches:
                 if allowed.match(name) is not None:
                     return True
@@ -437,22 +457,23 @@ class ASTVisitor:
             if self._dont_visit is False:
                 self._visit_fn_pre(node.__class__.__name__, node)
         except Exception as ex:
-            self._debug_visit('exception caught while visiting: "{}"'
-                              .format(ex))
+            self._debug_visit(
+                'exception caught while visiting: "{}"'.format(ex)
+            )
             ex_info = sys.exc_info()[-1]
             raise VisitError(ex, ex_info)
         try:
             # debug = False
             node_dict = node.__dict__
-            if self.get_flag_state('no_children_visits'):
+            if self.get_flag_state("no_children_visits"):
                 # reset
-                self.clear_flag('no_children_visits')
+                self.clear_flag("no_children_visits")
                 # get out
                 raise NoChildrenVisits()
 
-            if self.get_flag_state('reverse_visit'):
+            if self.get_flag_state("reverse_visit"):
                 visit_list = list(node_dict)[::-1]
-                self.clear_flag('reverse_visit')
+                self.clear_flag("reverse_visit")
             else:
                 visit_list = list(node_dict)
 
@@ -486,23 +507,27 @@ class ASTVisitor:
                             # print("inserting results into {}"
                             #      .format(node))
                             # print(node_dict[attr_name])
-                            before = (node_dict[attr_name]
-                                      [:idx+insertion_offset])
-                            after = (node_dict[attr_name]
-                                     [idx+insertion_offset+1:])
+                            before = node_dict[attr_name][
+                                : idx + insertion_offset
+                            ]
+                            after = node_dict[attr_name][
+                                idx + insertion_offset + 1 :
+                            ]
                             before.extend(result)
                             before.extend(after)
-                            insertion_offset += len(result)-1
+                            insertion_offset += len(result) - 1
                             attr_list = before
                             setattr(node, attr_name, attr_list)
                         else:
-                            node_dict[attr_name][idx+insertion_offset] = result
+                            node_dict[attr_name][
+                                idx + insertion_offset
+                            ] = result
                             # setattr(node, attr_name, attr)
 
                     deletion_offset = 0
                     for idx in to_delete:
                         try:
-                            del node_dict[attr_name][idx+deletion_offset]
+                            del node_dict[attr_name][idx + deletion_offset]
                             deletion_offset -= 1
                         except Exception:
                             # couldn't delete!
@@ -532,7 +557,7 @@ class ASTVisitor:
 
     def is_child_of_type(self, node, type_name):
         """Detect if parent of type is available."""
-        if not hasattr(node, 'parent'):
+        if not hasattr(node, "parent"):
             return False
         if node.parent is not None:
             if node.parent.__class__.__name__ == type_name:
@@ -543,13 +568,14 @@ class ASTVisitor:
 
     def find_parent_by_type(self, node, parent_type, level=1):
         """Find nth hierarchical ocurrence of type, upwards."""
-        if not hasattr(node, 'parent'):
+        if not hasattr(node, "parent"):
             return None
         if node.parent is not None:
             if node.parent.__class__.__name__ == parent_type:
                 if level > 1:
-                    return self.find_parent_by_type(node.parent, parent_type,
-                                                    level-1)
+                    return self.find_parent_by_type(
+                        node.parent, parent_type, level - 1
+                    )
                 else:
                     return node.parent
             return self.find_parent_by_type(node.parent, parent_type, level)
@@ -568,26 +594,29 @@ class ASTCopy(ASTVisitor):
 
         try:
             node_dict = node.__dict__
-            empty_members = {member_name: None for member_name, value in
-                             node_dict.items()
-                             if self._check_visit_allowed(member_name)}
-            if hasattr(node, '_tx_position'):
+            empty_members = {
+                member_name: None
+                for member_name, value in node_dict.items()
+                if self._check_visit_allowed(member_name)
+            }
+            if hasattr(node, "_tx_position"):
                 original_start_loc = node._tx_position
             else:
                 original_start_loc = None
-            if hasattr(node, '_tx_position_end'):
+            if hasattr(node, "_tx_position_end"):
                 original_end_loc = node._tx_position_end
             else:
                 original_end_loc = None
-            empty_members.update({'SCOFF_META':
-                                  {
-                                      'ast_copy': True,
-                                      'original_start_loc': original_start_loc,
-                                      'original_end_loc': original_end_loc
-                                  }})
-            class_obj = make_ast_object(node.__class__.__name__,
-                                        None,
-                                        **empty_members)
+            empty_members.update(
+                {
+                    "SCOFF_META": {
+                        "ast_copy": True,
+                        "original_start_loc": original_start_loc,
+                        "original_end_loc": original_end_loc,
+                    }
+                }
+            )
+            class_obj = make_ast_object(node.__class__, None, **empty_members)
             for member in node_dict:
                 if self._check_visit_allowed(member) is False:
                     continue
@@ -617,7 +646,7 @@ class ASTCopy(ASTVisitor):
             elif isinstance(node, dict):
                 return node.copy()
             elif node is not None:
-                self._debug_visit('unknown: {}'.format(node))
+                self._debug_visit("unknown: {}".format(node))
                 return node
 
 
@@ -630,9 +659,11 @@ class SetFlag:
 
     def __call__(self, fn):
         """Call."""
+
         def wrapper(tree, node):
             tree.set_flag(self._flag)
             return fn(tree, node)
+
         return wrapper
 
 
@@ -645,10 +676,12 @@ class SetFlagAfter:
 
     def __call__(self, fn):
         """Call."""
+
         def wrapper(tree, node):
             ret = fn(tree, node)
             tree.set_flag(self._flag)
             return ret
+
         return wrapper
 
 
@@ -661,9 +694,11 @@ class ClearFlag:
 
     def __call__(self, fn):
         """Call."""
+
         def wrapper(tree, node):
             tree.clear_flag(self._flag)
             return fn(tree, node)
+
         return wrapper
 
 
@@ -676,10 +711,12 @@ class ClearFlagAfter:
 
     def __call__(self, fn):
         """Call."""
+
         def wrapper(tree, node):
             ret = fn(tree, node)
             tree.clear_flag(self._flag)
             return ret
+
         return wrapper
 
 
@@ -693,6 +730,7 @@ class ConditionalVisit:
 
     def __call__(self, fn):
         """Call."""
+
         def wrapper(tree, node):
             if self._inverted is True:
                 if tree.get_flag_state(self._flag) is False:
@@ -703,42 +741,50 @@ class ConditionalVisit:
                 return fn(tree, node)
             else:
                 return node
+
         return wrapper
 
 
 def trace_visit(fn):
     """Trace visit."""
+
     def wrapper(tree, *args):
-        tree._debug_visit('entering {}, args are: {}'
-                          .format(fn.__name__, args))
+        tree._debug_visit("entering {}, args are: {}".format(fn.__name__, args))
         ret = fn(tree, *args)
-        tree._debug_visit('exiting {}'.format(fn.__name__))
+        tree._debug_visit("exiting {}".format(fn.__name__))
         return ret
+
     return wrapper
 
 
 def stop_visiting(fn):
     """No further visits."""
+
     def wrapper(tree, *args):
         ret = fn(tree, *args)
-        tree.set_flag('stop_visit')
+        tree.set_flag("stop_visit")
         return ret
+
     return wrapper
 
 
 def no_child_visits(fn):
     """No children visits."""
+
     def wrapper(tree, *args):
         ret = fn(tree, *args)
-        tree.set_flag('no_children_visits')
+        tree.set_flag("no_children_visits")
         return ret
+
     return wrapper
 
 
 def reverse_visit_order(fn):
     """Reverse visit order."""
+
     def wrapper(tree, *args):
         ret = fn(tree, *args)
-        tree.set_flag('reverse_visit')
+        tree.set_flag("reverse_visit")
         return ret
+
     return wrapper

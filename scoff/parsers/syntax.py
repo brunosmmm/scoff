@@ -26,20 +26,23 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
     SYNTAX_ERR_LOCAL_NAME_REDEFINED = 11
     SYNTAX_ERR_INVALID_IDENTIFIER = 12
     _SYNTAX_ERRORS = {}
-    __SYNTAX_ERRORS = {SYNTAX_ERR_GLOBAL_NAME_REDEFINED:
-                       SyntaxErrorDescriptor(SYNTAX_ERR_GLOBAL_NAME_REDEFINED,
-                                             'Re-definition of global name',
-                                             're-definition of global name'
-                                             ' "{n}"'),
-                       SYNTAX_ERR_LOCAL_NAME_REDEFINED:
-                       SyntaxErrorDescriptor(SYNTAX_ERR_LOCAL_NAME_REDEFINED,
-                                             'Re-definition of local name',
-                                             're-definition of local name'
-                                             ' "{n}"'),
-                       SYNTAX_ERR_INVALID_IDENTIFIER:
-                       SyntaxErrorDescriptor(SYNTAX_ERR_INVALID_IDENTIFIER,
-                                             'Invalid identifier',
-                                             'invalid identifier: "{id}"')}
+    __SYNTAX_ERRORS = {
+        SYNTAX_ERR_GLOBAL_NAME_REDEFINED: SyntaxErrorDescriptor(
+            SYNTAX_ERR_GLOBAL_NAME_REDEFINED,
+            "Re-definition of global name",
+            "re-definition of global name" ' "{n}"',
+        ),
+        SYNTAX_ERR_LOCAL_NAME_REDEFINED: SyntaxErrorDescriptor(
+            SYNTAX_ERR_LOCAL_NAME_REDEFINED,
+            "Re-definition of local name",
+            "re-definition of local name" ' "{n}"',
+        ),
+        SYNTAX_ERR_INVALID_IDENTIFIER: SyntaxErrorDescriptor(
+            SYNTAX_ERR_INVALID_IDENTIFIER,
+            "Invalid identifier",
+            'invalid identifier: "{id}"',
+        ),
+    }
 
     def __init__(self, text, *args, **kwargs):
         """Initialize."""

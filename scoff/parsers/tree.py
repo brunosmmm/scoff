@@ -253,10 +253,7 @@ class ASTVisitor:
 
     def get_flag_state(self, flag_name):
         """Get flag state."""
-        if flag_name not in self._flags:
-            return False
-
-        return self._flags[flag_name]
+        return self._flags.get(flag_name, False)
 
     @staticmethod
     def is_of_type(node, type_name):

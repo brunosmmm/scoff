@@ -16,6 +16,7 @@ class VisitError(Exception):
 
     def __init__(self, original_exception, ex_info=None):
         """Initialize."""
+        super().__init__()
         self.ex = original_exception
         if ex_info is not None:
             ex_fname = os.path.split(ex_info.tb_frame.f_code.co_filename)[1]
@@ -272,7 +273,7 @@ class ASTVisitor:
             if self._check_visit_allowed(attr_name):
                 if self.is_of_type(attr, node_type):
                     return attr
-                elif isinstance(attr, list):
+                if isinstance(attr, list):
                     for obj in attr:
                         ret = self.get_first_occurrence(obj, node_type)
                         if ret is not None:
@@ -416,10 +417,10 @@ class ASTVisitor:
                 if allowed.match(name) is not None:
                     return True
             return False
-        else:
-            for disallowed in self.__not_allowed_matches:
-                if disallowed.match(name) is not None:
-                    return False
+        # else
+        for disallowed in self.__not_allowed_matches:
+            if disallowed.match(name) is not None:
+                return False
 
         return True
 
@@ -436,14 +437,12 @@ class ASTVisitor:
                 if attr is not None:
                     setattr(node, attr, ret)
                     return True
-                else:
-                    # swapping out entire statements, not attributes
-                    return ret
-            else:
-                # deleted
-                if attr is not None:
-                    setattr(node, attr, None)
-                return None
+                # swapping out entire statements, not attributes
+                return ret
+            # deleted
+            if attr is not None:
+                setattr(node, attr, None)
+            return None
         # not modified
         return False
 
@@ -561,8 +560,7 @@ class ASTVisitor:
             if node.parent.__class__.__name__ == type_name:
                 return True
             return self.is_child_of_type(node.parent, type_name)
-        else:
-            return False
+        return False
 
     def find_parent_by_type(self, node, parent_type, level=1):
         """Find nth hierarchical ocurrence of type, upwards."""
@@ -574,19 +572,13 @@ class ASTVisitor:
                     return self.find_parent_by_type(
                         node.parent, parent_type, level - 1
                     )
-                else:
-                    return node.parent
+                return node.parent
             return self.find_parent_by_type(node.parent, parent_type, level)
-        else:
-            return None
+        return None
 
 
 class ASTCopy(ASTVisitor):
     """Makes a fake copy of the AST."""
-
-    def __init__(self, *args, **kwargs):
-        """Initialize."""
-        super().__init__(*args, **kwargs)
 
     def _visit(self, node):
 
@@ -639,11 +631,11 @@ class ASTCopy(ASTVisitor):
         except AttributeError:
             if isinstance(node, str):
                 return node[:]
-            elif isinstance(node, bool):
+            if isinstance(node, bool):
                 return node
-            elif isinstance(node, dict):
+            if isinstance(node, dict):
                 return node.copy()
-            elif node is not None:
+            if node is not None:
                 self._debug_visit("unknown: {}".format(node))
                 return node
 

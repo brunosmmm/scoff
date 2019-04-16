@@ -167,13 +167,11 @@ class ASTVisitor:
         self.__not_allowed_matches = []
         if self.get_flag_state("exclusive_visit"):
             self.set_flag("minimal_depth")
-            self._allowed_visits = set(
-                [
-                    "^{}$".format(name.lstrip("visit_"))
-                    for name in methods
-                    if name.startswith("visit_")
-                ]
-            )
+            self._allowed_visits = {
+                "^{}$".format(name[6:])
+                for name in methods
+                if name.startswith("visit_")
+            }
 
     def _debug_visit(self, message):
         """Print debug messages when visiting."""

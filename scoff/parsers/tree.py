@@ -160,7 +160,7 @@ class ASTVisitor:
 
         # visit function table
         self.__visit_fn_table = {}
-        self.__visit_fn_pre_table = {}
+        self.__visit_pre_fn_table = {}
 
         # exclusive visits
         self.__allowed_matches = []
@@ -403,10 +403,10 @@ class ASTVisitor:
         return fn(node)
 
     def _visit_pre_default(self, node):
-        if "Default" not in self.__visit_fn_pre_table:
+        if "Default" not in self.__visit_pre_fn_table:
             return None
 
-        fn = self.__visit_fn_pre_table["Default"]
+        fn = self.__visit_pre_fn_table["Default"]
 
         return fn(node)
 

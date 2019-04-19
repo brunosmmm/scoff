@@ -127,13 +127,10 @@ def make_ast(tree_dict, parent_name=None, depth=0):
 class ASTVisitor:
     """Visits an AST."""
 
-    def __init__(self, *disallowed, **options):
+    def __init__(self, **options):
         """Initialize."""
         super().__init__()
-        self._not_allowed = set()
-        self._allowed_visits = set()
-        self.__visiting = False
-        self.add_disallowed_prefixes(*disallowed)
+        self._visiting = False
         self._dont_visit = False
         self._visit_depth = 0
         self._visit_history = deque()
@@ -157,22 +154,13 @@ class ASTVisitor:
                 self.set_option(opt_name, opt_value)
 
         # pre-allocate visit function table
-        methods = [name for name in dir(self) if callable(getattr(self, name))]
+        self._method_names = [
+            name for name in dir(self) if callable(getattr(self, name))
+        ]
 
         # visit function table
         self.__visit_fn_table = {}
         self.__visit_pre_fn_table = {}
-
-        # exclusive visits
-        self.__allowed_matches = []
-        self.__not_allowed_matches = []
-        if self.get_flag_state("exclusive_visit"):
-            self.set_flag("minimal_depth")
-            self._allowed_visits = {
-                "^{}$".format(name[6:])
-                for name in methods
-                if name.startswith("visit_")
-            }
 
     def _debug_visit(self, message):
         """Print debug messages when visiting."""
@@ -188,18 +176,6 @@ class ASTVisitor:
     def reset_visits(self):
         """Reset visit record."""
         self._visited_nodes = set()
-
-    def add_disallowed_prefixes(self, *prefixes):
-        """Disallow visiting of attributes with a prefix."""
-        if self.__visiting is True:
-            raise VisitError("cannot alter disallowed prefixes while visiting")
-        self._not_allowed |= set(prefixes)
-
-    def add_allowed_prefixes(self, *prefixes):
-        """Add allowed prefixes."""
-        if self.__visiting is True:
-            raise VisitError("cannot alter allowed prefixes while visiting")
-        self._allowed_visits |= set(prefixes)
 
     def add_visit_hook(self, node_cls_name, method):
         """Add external hook to call when a certain class is visited."""
@@ -369,30 +345,20 @@ class ASTVisitor:
             return name[len(prefix) :] if name.startswith(prefix) else name
 
         # pre-allocate visit function table
-        methods = [name for name in dir(self) if callable(getattr(self, name))]
-
-        # visit function table
         self.__visit_fn_table = {
             strip_name(name, "visit_"): getattr(self, name)
-            for name in methods
+            for name in self._method_names
             if name.startswith("visit_")
         }
         self.__visit_pre_fn_table = {
             strip_name(name, "visitPre_"): getattr(self, name)
-            for name in methods
+            for name in self._method_names
             if name.startswith("visitPre_")
         }
 
-        # pre-compile regular expressions
-        self.__not_allowed_matches = [
-            re.compile(disallowed) for disallowed in self._not_allowed
-        ]
-        self.__allowed_matches = [
-            re.compile(allowed) for allowed in self._allowed_visits
-        ]
-        self.__visiting = True
+        self._visiting = True
         ret = self._visit(node)
-        self.__visiting = False
+        self._visiting = False
         return ret
 
     def _visit_default(self, node):
@@ -411,17 +377,8 @@ class ASTVisitor:
 
         return fn(node)
 
-    def _check_visit_allowed(self, name):
-        if self.get_flag_state("exclusive_visit"):
-            for allowed in self.__allowed_matches:
-                if allowed.match(name) is not None:
-                    return True
-            return False
-        # else
-        for disallowed in self.__not_allowed_matches:
-            if disallowed.match(name) is not None:
-                return False
-
+    @staticmethod
+    def _check_visit_allowed(*args):
         return True
 
     def _visit_and_modify(self, node, attr=None):
@@ -575,6 +532,64 @@ class ASTVisitor:
                 return node.parent
             return self.find_parent_by_type(node.parent, parent_type, level)
         return None
+
+
+class ExclusiveASTVisitor(ASTVisitor):
+    """Exclusive visits."""
+
+    def __init__(self, *disallowed, **options):
+        """Initialize."""
+        super().__init__(**options)
+        # allowed, disallowed prefixes
+        self._not_allowed = set()
+        self._allowed_visits = set()
+        self.add_disallowed_prefixes(*disallowed)
+        # exclusive visits
+        self.__allowed_matches = []
+        self.__not_allowed_matches = []
+        if self.get_flag_state("exclusive_visit"):
+            self.set_flag("minimal_depth")
+            self._allowed_visits = {
+                "^{}$".format(name[6:])
+                for name in self._method_names
+                if name.startswith("visit_")
+            }
+
+    def visit(self, node):
+        """Begin visit."""
+        # pre-compile regular expressions
+        self.__not_allowed_matches = [
+            re.compile(disallowed) for disallowed in self._not_allowed
+        ]
+        self.__allowed_matches = [
+            re.compile(allowed) for allowed in self._allowed_visits
+        ]
+        return super().visit(node)
+
+    def add_disallowed_prefixes(self, *prefixes):
+        """Disallow visiting of attributes with a prefix."""
+        if self._visiting is True:
+            raise VisitError("cannot alter disallowed prefixes while visiting")
+        self._not_allowed |= set(prefixes)
+
+    def add_allowed_prefixes(self, *prefixes):
+        """Add allowed prefixes."""
+        if self._visiting is True:
+            raise VisitError("cannot alter allowed prefixes while visiting")
+        self._allowed_visits |= set(prefixes)
+
+    def _check_visit_allowed(self, name):
+        if self.get_flag_state("exclusive_visit"):
+            for allowed in self.__allowed_matches:
+                if allowed.match(name) is not None:
+                    return True
+            return False
+        # else
+        for disallowed in self.__not_allowed_matches:
+            if disallowed.match(name) is not None:
+                return False
+
+        return True
 
 
 class ASTCopy(ASTVisitor):

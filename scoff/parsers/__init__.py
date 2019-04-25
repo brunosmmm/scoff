@@ -11,8 +11,7 @@ class ScoffASTObject:
 
     def __init__(self, **kwargs):
         """Initialize."""
-        self.__visitable_children = {}
-        self.__non_visitable_children = {}
+        self.__non_visitable_children_names = []
         self.__visitable_children_names = []
         if "SCOFF_META" in kwargs:
             self.SCOFF_META = kwargs.pop("SCOFF_META")
@@ -21,19 +20,20 @@ class ScoffASTObject:
         for name, value in kwargs.items():
             # ignore special names
             if not name.startswith("_") and name != "parent":
-                self.__visitable_children[name] = value
                 self.__visitable_children_names.append(name)
             else:
-                self.__non_visitable_children[name] = value
+                self.__non_visitable_children_names.append(name)
             setattr(self, name, value)
 
     @property
     def visitable_children(self):
         """Get visitable children."""
         # update
-        for name in self.__visitable_children_names:
-            self.__visitable_children[name] = getattr(self, name)
-        return self.__visitable_children
+        visitable = {
+            name: getattr(self, name)
+            for name in self.__visitable_children_names
+        }
+        return visitable
 
     @property
     def visitable_children_names(self):
@@ -46,8 +46,7 @@ class ScoffASTObject:
 
     def __deepcopy__(self, memo):
         members = {}
-        for member_name in self.visitable_children:
-            member_value = getattr(self, member_name)
+        for member_name, member_value in self.visitable_children:
             members[member_name] = copy.deepcopy(member_value)
 
         ret = self.__class__(

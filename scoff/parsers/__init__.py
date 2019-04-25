@@ -46,7 +46,7 @@ class ScoffASTObject:
 
     def __deepcopy__(self, memo):
         members = {}
-        for member_name, member_value in self.visitable_children:
+        for member_name, member_value in self.visitable_children.items():
             members[member_name] = copy.deepcopy(member_value)
 
         ret = self.__class__(

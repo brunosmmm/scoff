@@ -82,21 +82,23 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
 
     def _enter_scope(self, location):
         if location is not None and location in self._collected_scopes:
-            self._debug_visit('RE-ENTERING scope at location {}'
-                              .format(location))
+            self._debug_visit(
+                "RE-ENTERING scope at location {}".format(location)
+            )
             # entering again
             self._scope_stack.append([location, self._collected_locals])
             _, self._collected_locals = self._collected_scopes[location]
-        else:
-            self._debug_visit('entering scope')
+        elif location is not None:
+            self._debug_visit("entering scope")
             # create new
             # new_local_scope = self._collected_locals.copy()
             self._scope_stack.append([location, self._collected_locals])
             self._collected_locals = OrderedDict()
 
     def _exit_scope(self, location):
-        self._debug_visit('exiting scope, depth = {}'
-                          .format(len(self._scope_stack)))
+        self._debug_visit(
+            "exiting scope, depth = {}".format(len(self._scope_stack))
+        )
         if self._pass_run is False:
             old_local_scope = self._collected_locals.copy()
             enter_loc, self._collected_locals = self._scope_stack.pop()
@@ -104,31 +106,29 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         else:
             enter_loc, self._collected_locals = self._scope_stack.pop()
 
-    def _collect_symbol(self, name, node, globl=False):
+    def _collect_symbol(self, name, node, globl=False, ignore_redefine=False):
         # verify if identifier is valid
         if not self.is_valid_identifier(name):
             raise self.get_error_from_code(
-                node,
-                self.SYNTAX_ERR_INVALID_IDENTIFIER,
-                id=name
+                node, self.SYNTAX_ERR_INVALID_IDENTIFIER, id=name
             )
         if len(self._scope_stack) == 0 or globl is True:
             # global symbol
             self._debug_visit('collecting global symbol: "{}"'.format(name))
-            if name in self._collected_globals:
+            if name in self._collected_globals and ignore_redefine is False:
                 raise self.get_error_from_code(
-                    node,
-                    self.SYNTAX_ERR_GLOBAL_NAME_REDEFINED,
-                    n=name)
-            self._collected_globals[name] = node
+                    node, self.SYNTAX_ERR_GLOBAL_NAME_REDEFINED, n=name
+                )
+            if name not in self._collected_globals:
+                self._collected_globals[name] = node
         else:
             self._debug_visit('collecting local symbol: "{}"'.format(name))
-            if name in self._collected_locals:
+            if name in self._collected_locals and ignore_redefine is False:
                 raise self.get_error_from_code(
-                    node,
-                    self.SYNTAX_ERR_LOCAL_NAME_REDEFINED,
-                    n=name)
-            self._collected_locals[name] = node
+                    node, self.SYNTAX_ERR_LOCAL_NAME_REDEFINED, n=name
+                )
+            if name not in self._collected_locals:
+                self._collected_locals[name] = node
 
     def get_node_scope(self, node):
         """Get scope in which this node is declared."""
@@ -147,7 +147,7 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
     def find_node_line(self, node):
         """Find node location."""
         try:
-            pos = getattr(node, '_tx_position')
+            pos = getattr(node, "_tx_position")
         except AttributeError:
             return None
         return self._find_node_line(node, pos)
@@ -155,7 +155,7 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
     @staticmethod
     def find_node_line_in_text(txt, position):
         current_pos = 0
-        for idx, line in enumerate(txt.split('\n')):
+        for idx, line in enumerate(txt.split("\n")):
             if position is None:
                 return None
             if current_pos + len(line) < position:
@@ -163,10 +163,10 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
                 continue
             else:
                 if current_pos != 0:
-                    col = (position-idx) % current_pos
+                    col = (position - idx) % current_pos
                 else:
                     col = 0
-                return (idx+1, col)
+                return (idx + 1, col)
 
     def _find_node_line(self, node, position):
         """Find line where node is located."""
@@ -174,19 +174,21 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
 
     def get_error(self, node, message, code=None, exception=None):
         """Get syntax error exception."""
-        return SyntaxCheckerError('at {}: {}'.
-                                  format(self.find_node_line(node),
-                                         message), code, exception)
+        return SyntaxCheckerError(
+            "at {}: {}".format(self.find_node_line(node), message),
+            code,
+            exception,
+        )
 
     def get_error_from_code(self, node, code, **msg_kwargs):
         """Get exception from code."""
-        if '_exception' in msg_kwargs:
-            exception = msg_kwargs.pop('_exception')
+        if "_exception" in msg_kwargs:
+            exception = msg_kwargs.pop("_exception")
         else:
             exception = None
-        msg = super().get_error_from_code(code,
-                                          self._SYNTAX_ERRORS,
-                                          **msg_kwargs)
+        msg = super().get_error_from_code(
+            code, self._SYNTAX_ERRORS, **msg_kwargs
+        )
         return self.get_error(node, msg, code, exception)
 
     def scoped_symbol_lookup(self, name):
@@ -206,8 +208,7 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         """Overall symbol lookup."""
         ret = []
         if name in self._collected_globals:
-            ret.append([self._collected_globals[name],
-                        self._collected_globals])
+            ret.append([self._collected_globals[name], self._collected_globals])
 
         for location, (end_loc, scope) in self._collected_scopes.items():
             if name in scope:
@@ -221,14 +222,14 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
 
     def report_symbols(self):
         """Report all symbols collected."""
-        ret = {'globals': {}}
+        ret = {"globals": {}}
         for symbol_name, symbol in self._collected_globals.items():
-            ret['globals'][symbol_name] = symbol
+            ret["globals"][symbol_name] = symbol
 
         for start_loc, (end_loc, scope) in self._collected_scopes.items():
-            ret['scope_{}'.format(start_loc)] = {}
+            ret["scope_{}".format(start_loc)] = {}
             for symbol_name, symbol in scope.items():
-                ret['scope_{}'.format(start_loc)][symbol_name] = symbol
+                ret["scope_{}".format(start_loc)][symbol_name] = symbol
 
         return ret
 
@@ -248,7 +249,7 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
     @classmethod
     def is_valid_identifier(cls, identifier):
         """Determine if identifier is valid."""
-        if not hasattr(cls, 'IDENTIFIER_REGEX'):
+        if not hasattr(cls, "IDENTIFIER_REGEX"):
             # just return true, we accept all
             return True
         m = cls.IDENTIFIER_REGEX.match(identifier)
@@ -257,45 +258,56 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
 
 def enter_scope(fn):
     """Enter scope."""
+
     def wrapper(chk, node):
-        chk._enter_scope(node._tx_position)
+        chk._enter_scope(node)
         return fn(chk, node)
+
     return wrapper
 
 
 def enter_scope_after(fn):
     """Enter scope after."""
+
     def wrapper(chk, node):
         ret = fn(chk, node)
-        chk._enter_scope(node._tx_position)
+        chk._enter_scope(node)
         return ret
+
     return wrapper
 
 
 def exit_scope(fn):
     """Exit scope."""
+
     def wrapper(chk, node):
-        chk._exit_scope(node._tx_position)
+        chk._exit_scope(node)
         return fn(chk, node)
+
     return wrapper
 
 
 def exit_scope_after(fn):
     """Exit scope after."""
+
     def wrapper(chk, node):
         ret = fn(chk, node)
-        chk._exit_scope(node._tx_position)
+        chk._exit_scope(node)
         return ret
+
     return wrapper
 
 
 def auto_collect(fn, node_field):
     """Automatically collect symbol."""
+
     def wrapper(chk, node):
         if not hasattr(node, node_field):
-            raise RuntimeError('invalid attribute for node: {}'
-                               .format(node_field))
+            raise RuntimeError(
+                "invalid attribute for node: {}".format(node_field)
+            )
         chk._collect_symbol(getattr(node, node_field), node)
+
     return wrapper
 
 
@@ -308,12 +320,15 @@ class AutoCollect:
 
     def __call__(self, fn):
         """Call."""
+
         def wrapper(chk, node):
             if not hasattr(node, self._field):
-                raise RuntimeError('invalid attribute for node: {}'
-                                   .format(self._field))
+                raise RuntimeError(
+                    "invalid attribute for node: {}".format(self._field)
+                )
             chk._collect_symbol(getattr(node, self._field), node)
             return fn(chk, node)
+
         return wrapper
 
 
@@ -327,11 +342,14 @@ class AutoCollectConditional:
 
     def __call__(self, fn):
         """Call."""
+
         def wrapper(chk, node):
             if not hasattr(node, self._field):
-                raise RuntimeError('invalid attribute for node: {}'
-                                   .format(self._field))
+                raise RuntimeError(
+                    "invalid attribute for node: {}".format(self._field)
+                )
             if chk.get_flag_state(self._flag):
                 chk._collect_symbol(getattr(node, self._field), node)
             return fn(chk, node)
+
         return wrapper

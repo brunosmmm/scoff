@@ -1,6 +1,5 @@
 """General Parser utilities."""
 
-import textwrap
 import re
 import sys
 import os
@@ -36,92 +35,6 @@ class VisitError(Exception):
 
 class NoChildrenVisits(Exception):
     """Controlled error to escape event sequence."""
-
-
-def make_ast_class(class_name, subclass_of, **members):
-    """Make class on the fly."""
-    _global = {}
-    _local = {}
-    # comply with textX stuff being used
-    members.update({"_tx_position": None})
-    if subclass_of is None:
-        class_decl = "class {}:\n".format(class_name)
-    else:
-        class_decl = "class {}({}):\n".format(class_name, subclass_of.__name__)
-        _global = {subclass_of.__name__: subclass_of}
-    member_decl = "\n".join(
-        ["{} = {}".format(name, value) for name, value in members.items()]
-    )
-
-    exec(class_decl + textwrap.indent(member_decl, "    "), _global, _local)
-
-    return _local[class_name]
-
-
-def make_ast_object(cls, subclass_of, *init_args, **members):
-    """Make object."""
-
-    def fake_class_obj(cls_name):
-        cls = make_ast_class(cls_name, subclass_of, _dummy_ast=True)
-        obj = cls(*init_args)
-        for name, value in members.items():
-            setattr(obj, name, value)
-
-        return obj
-
-    if isinstance(cls, str):
-        obj = fake_class_obj(cls)
-    elif isinstance(cls, type):
-        if not issubclass(cls, ScoffASTObject):
-            obj = fake_class_obj(cls.__name__)
-        else:
-            if "parent" not in members:
-                members["parent"] = None
-            obj = cls(**members)
-
-    return obj
-
-
-def make_ast(tree_dict, parent_name=None, depth=0):
-    """Make an ast from scratch."""
-    if len(tree_dict) != 1 and depth == 0:
-        # error
-        raise RuntimeError("only one root node allowed")
-
-    if depth == 0:
-        root_name, tree_dict = next(iter(tree_dict.items()))
-
-    children = {}
-    for node_name, node_child in tree_dict.items():
-        if isinstance(node_child, dict):
-            # a class
-            sub_tree = make_ast(node_child, node_name, depth + 1)
-            children[node_name] = sub_tree
-        elif isinstance(node_child, list):
-            # several children
-            child_list = []
-            for child in node_child:
-                sub_tree = make_ast(child, node_name, depth + 1)
-                child_list.append(sub_tree)
-            if len(child_list) == 1:
-                child_list = child_list[0]
-            children[node_name] = child_list
-        else:
-            # leaf node
-            children[node_name] = node_child
-    if depth > 0:
-        cls_name = parent_name
-    else:
-        cls_name = root_name
-
-    if depth % 2:
-        ret = [child for child in children.values()]
-        if len(ret) == 1:
-            ret, = ret
-    else:
-        ret = make_ast_object(cls_name, None, **children)
-
-    return ret
 
 
 class ASTVisitor:
@@ -244,7 +157,14 @@ class ASTVisitor:
             if inclusive:
                 return node
 
-        node_dict = node.__dict__
+        if isinstance(node, ScoffASTObject):
+            node_dict = node.visitable_children
+        else:
+            node_dict = {
+                name: item
+                for name, item in node.__dict__.items()
+                if not name.startswith("_") and name != "parent"
+            }
         for attr_name, attr in node_dict.items():
             if self._check_visit_allowed(attr_name):
                 if self.is_of_type(attr, node_type):
@@ -263,23 +183,25 @@ class ASTVisitor:
 
     def get_all_occurrences(self, root, node_type):
         """Find all nodes of a type."""
-        node_dict = root.__dict__
+        if isinstance(root, ScoffASTObject):
+            node_dict = root.visitable_children
+        else:
+            node_dict = {
+                name: item
+                for name, item in root.__dict__.items()
+                if not name.startswith("_") and name != "parent"
+            }
         occurrences = []
-        for attr_name, attr in node_dict.items():
-            if self._check_visit_allowed(attr_name):
-                if self.is_of_type(attr, node_type):
-                    occurrences.append(attr)
-                elif isinstance(attr, (list, tuple)):
-                    for obj in attr:
-                        occurrences.extend(
-                            self.get_all_occurrences(obj, node_type)
-                        )
-                elif isinstance(attr, str):
-                    return []
-                else:
-                    occurrences.extend(
-                        self.get_all_occurrences(attr, node_type)
-                    )
+        for attr in node_dict.values():
+            if self.is_of_type(attr, node_type):
+                occurrences.append(attr)
+            elif isinstance(attr, (list, tuple)):
+                for obj in attr:
+                    occurrences.extend(self.get_all_occurrences(obj, node_type))
+            elif isinstance(attr, str):
+                return []
+            else:
+                occurrences.extend(self.get_all_occurrences(attr, node_type))
 
         return occurrences
 
@@ -388,8 +310,6 @@ class ASTVisitor:
             to_visit = getattr(node, attr)
         ret = self._visit(to_visit)
         if ret != to_visit:
-            # print('original = {}; new = {}'
-            #       .format(to_visit, ret))
             if ret is not None:
                 if attr is not None:
                     setattr(node, attr, ret)
@@ -418,74 +338,77 @@ class ASTVisitor:
             raise VisitError(ex, ex_info)
         try:
             # debug = False
-            node_dict = node.__dict__
             if self.get_flag_state("no_children_visits"):
                 # reset
                 self.clear_flag("no_children_visits")
                 # get out
                 raise NoChildrenVisits()
 
-            if self.get_flag_state("reverse_visit"):
-                visit_list = list(node_dict)[::-1]
-                self.clear_flag("reverse_visit")
+            visit_list = None
+            if not isinstance(node, ScoffASTObject):
+                visit_list = [
+                    item
+                    for item in node.__dict__
+                    if not item.startswith("_") and item != "parent"
+                ]
             else:
-                visit_list = list(node_dict)
+                # NOTE do not use dir as it sorts alphabetically
+                visit_list = node.visitable_children_names
+
+            if self.get_flag_state("reverse_visit"):
+                visit_list = visit_list[::-1]
+                self.clear_flag("reverse_visit")
 
             for attr_name in visit_list:
                 if self._check_visit_allowed(attr_name) is False:
                     continue
 
-                if not isinstance(node_dict[attr_name], (tuple, list)):
+                attr_value = getattr(node, attr_name)
+                if not isinstance(attr_value, (tuple, list)):
                     self._visit_and_modify(node, attr_name)
                 else:
-                    # debug = True
-                    # print(attr)
+
                     modified_statements = {}
                     to_delete = []
-                    for idx, statement in enumerate(node_dict[attr_name]):
+                    for idx, statement in enumerate(attr_value):
                         result = self._visit_and_modify(statement)
+
                         if result is None:
-                            # print('will delete: {}'.format(statement))
                             to_delete.append(idx)
                         elif not isinstance(result, bool):
                             # returned something else, save
                             modified_statements[idx] = result
                         elif result:
-                            node_dict[attr_name][idx] = result
+                            attr_value[idx] = result
                             # unflag as ignored due to modification
                             self._visited_nodes.remove(statement)
                         # process returned data
                     insertion_offset = 0
+                    attr_list = []
                     for idx, result in modified_statements.items():
-                        if isinstance(result, (tuple, list)):
-                            # print("inserting results into {}"
-                            #      .format(node))
-                            # print(node_dict[attr_name])
-                            before = node_dict[attr_name][
-                                : idx + insertion_offset
-                            ]
-                            after = node_dict[attr_name][
-                                idx + insertion_offset + 1 :
-                            ]
-                            before.extend(result)
-                            before.extend(after)
-                            insertion_offset += len(result) - 1
-                            attr_list = before
-                            setattr(node, attr_name, attr_list)
+                        if not isinstance(result, (tuple, list)):
+                            to_insert = [result]
                         else:
-                            node_dict[attr_name][
-                                idx + insertion_offset
-                            ] = result
-                            # setattr(node, attr_name, attr)
+                            to_insert = result
+
+                        before = attr_value[: idx + insertion_offset]
+                        after = attr_value[idx + insertion_offset + 1 :]
+                        before.extend(to_insert)
+                        before.extend(after)
+                        insertion_offset += len(to_insert) - 1
+                        attr_value = before
 
                     deletion_offset = 0
                     for idx in to_delete:
                         try:
-                            del node_dict[attr_name][idx + deletion_offset]
+                            del attr_value[idx + deletion_offset]
                             deletion_offset -= 1
                         except Exception:
                             # couldn't delete!
                             pass
+                    # modify
+                    setattr(node, attr_name, attr_value)
+
         except (AttributeError, NoChildrenVisits):
             # built-in types
             pass
@@ -592,69 +515,6 @@ class ExclusiveASTVisitor(ASTVisitor):
         return True
 
 
-class ASTCopy(ASTVisitor):
-    """Makes a fake copy of the AST."""
-
-    def _visit(self, node):
-
-        try:
-            node_dict = node.__dict__
-            empty_members = {
-                member_name: None
-                for member_name, value in node_dict.items()
-                if self._check_visit_allowed(member_name)
-            }
-            if hasattr(node, "_tx_position"):
-                original_start_loc = node._tx_position
-            else:
-                original_start_loc = None
-            if hasattr(node, "_tx_position_end"):
-                original_end_loc = node._tx_position_end
-            else:
-                original_end_loc = None
-            empty_members.update(
-                {
-                    "SCOFF_META": {
-                        "ast_copy": True,
-                        "original_start_loc": original_start_loc,
-                        "original_end_loc": original_end_loc,
-                    }
-                }
-            )
-            class_obj = make_ast_object(node.__class__, None, **empty_members)
-            for member in node_dict:
-                if self._check_visit_allowed(member) is False:
-                    continue
-                if isinstance(getattr(node, member), (list, tuple)):
-                    ret = []
-                    for instance in getattr(node, member):
-                        visit_ret = self._visit(instance)
-                        try:
-                            visit_ret.parent = class_obj
-                        except Exception:
-                            pass
-                        ret.append(visit_ret)
-                    setattr(class_obj, member, ret)
-                else:
-                    ret = self._visit(getattr(node, member))
-                    try:
-                        ret.parent = class_obj
-                    except Exception:
-                        pass
-                    setattr(class_obj, member, ret)
-            return class_obj
-        except AttributeError:
-            if isinstance(node, str):
-                return node[:]
-            if isinstance(node, bool):
-                return node
-            if isinstance(node, dict):
-                return node.copy()
-            if node is not None:
-                self._debug_visit("unknown: {}".format(node))
-                return node
-
-
 class SetFlag:
     """Set flag on visit."""
 
@@ -756,7 +616,7 @@ def trace_visit(fn):
     def wrapper(tree, *args):
         tree._debug_visit("entering {}, args are: {}".format(fn.__name__, args))
         ret = fn(tree, *args)
-        tree._debug_visit("exiting {}".format(fn.__name__))
+        tree._debug_visit("exiting {}, returned: {}".format(fn.__name__, ret))
         return ret
 
     return wrapper

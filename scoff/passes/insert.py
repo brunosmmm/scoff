@@ -8,7 +8,7 @@ class NodeInserter(ASTVisitor):
 
     def __init__(self, ast):
         """Initialize."""
-        super().__init__('_.*', 'parent$')
+        super().__init__()
         self._ast = ast
         self._insert_after = True
         self._matching_node = None

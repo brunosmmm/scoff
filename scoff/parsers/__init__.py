@@ -49,9 +49,11 @@ class ScoffASTObject:
         for member_name, member_value in self.visitable_children.items():
             members[member_name] = copy.deepcopy(member_value)
 
-        ret = self.__class__(
-            parent=None, SCOFF_META=copy.deepcopy(self.SCOFF_META), **members
-        )
+        # flag as copy
+        new_meta = copy.deepcopy(self.SCOFF_META)
+        new_meta["ast_copy"] = True
+
+        ret = self.__class__(parent=None, SCOFF_META=new_meta, **members)
 
         for member_value in members.values():
             if isinstance(member_value, ScoffASTObject):

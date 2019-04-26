@@ -13,17 +13,10 @@ VisitHistory = namedtuple("VisitHistory", ["node", "replaces", "depth"])
 class VisitError(Exception):
     """Exception while visiting."""
 
-    def __init__(self, original_exception, ex_info=None):
+    def __init__(self, original_exception):
         """Initialize."""
         super().__init__()
         self.ex = original_exception
-        if ex_info is not None:
-            ex_fname = os.path.split(ex_info.tb_frame.f_code.co_filename)[1]
-            self.ex_fname = ex_fname
-            self.ex_lineno = ex_info.tb_lineno
-        else:
-            self.ex_fname = None
-            self.ex_lineno = None
 
     def find_embedded_exception(self):
         """Find an exception that is not VisitError."""
@@ -334,8 +327,7 @@ class ASTVisitor:
             self._debug_visit(
                 'exception caught while visiting: "{}"'.format(ex)
             )
-            ex_info = sys.exc_info()[-1]
-            raise VisitError(ex, ex_info)
+            raise VisitError(ex)
         try:
             # debug = False
             if self.get_flag_state("no_children_visits"):
@@ -421,8 +413,7 @@ class ASTVisitor:
                 self._visit_depth -= 1
                 return node
         except Exception as ex:
-            ex_info = sys.exc_info()[-1]
-            raise VisitError(ex, ex_info)
+            raise VisitError(ex)
         # store as last visited node
         if node == ret:
             replaces = None

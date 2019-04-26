@@ -1,9 +1,9 @@
 """General Parser utilities."""
 
 import re
-from collections import deque, namedtuple
-
+from collections import namedtuple, deque
 from scoff.parsers import ScoffASTObject
+from scoff.parsers.visits import ScoffVisitObject
 
 # Visit history object
 VisitHistory = namedtuple("VisitHistory", ["node", "replaces", "depth"])
@@ -44,6 +44,7 @@ class ASTVisitor:
         self._hooks = {}
         self.reset_visits()
         self.clear_flag("debug_visit")
+        self._visited_nodes = set()
 
         # flags
         self.clear_flag("no_children_visits")
@@ -150,14 +151,15 @@ class ASTVisitor:
                 return node
 
         if isinstance(node, ScoffASTObject):
-            node_dict = node.visitable_children
+            node_dict = node.visitable_children_names
         else:
-            node_dict = {
-                name: item
-                for name, item in node.__dict__.items()
+            node_dict = [
+                name
+                for name in node.__dict__
                 if not name.startswith("_") and name != "parent"
-            }
-        for attr_name, attr in node_dict.items():
+            ]
+        for attr_name in node_dict:
+            attr = getattr(node, attr_name)
             if self._check_visit_allowed(attr_name):
                 if self.is_of_type(attr, node_type):
                     return attr
@@ -170,21 +172,23 @@ class ASTVisitor:
                     return None
                 else:
                     self.get_first_occurrence(attr, node_type)
+            del attr
 
         return None
 
     def get_all_occurrences(self, root, node_type):
         """Find all nodes of a type."""
         if isinstance(root, ScoffASTObject):
-            node_dict = root.visitable_children
+            node_dict = root.visitable_children_names
         else:
-            node_dict = {
-                name: item
-                for name, item in root.__dict__.items()
+            node_dict = [
+                name
+                for name in root.__dict__
                 if not name.startswith("_") and name != "parent"
-            }
+            ]
         occurrences = []
-        for attr in node_dict.values():
+        for attr_name in node_dict:
+            attr = getattr(root, attr_name)
             if self.is_of_type(attr, node_type):
                 occurrences.append(attr)
             elif isinstance(attr, (list, tuple)):
@@ -194,8 +198,18 @@ class ASTVisitor:
                 return []
             else:
                 occurrences.extend(self.get_all_occurrences(attr, node_type))
+            del attr
 
         return occurrences
+
+    def _cleanup_visit(self):
+        """Cleanup temporary storage after visit."""
+        for member_name in dir(self):
+            if isinstance(getattr(self, member_name), ScoffVisitObject):
+                member_class = self.__dict__[member_name].__class__
+                self.__dict__[member_name] = member_class()
+        # remove visitation list
+        self._visited_nodes = set()
 
     def _store_visit(self, visit_history):
         """Store visit."""
@@ -223,11 +237,11 @@ class ASTVisitor:
         fn = self.__visit_fn_table[cls_name]
 
         # check if visited before
-        if self.has_been_visited(node):
-            if self.get_flag_state("ignore_visited"):
+        if self.get_flag_state("ignore_visited"):
+            if self.has_been_visited(node):
                 return node
-        else:
-            self._visited_nodes |= set([node])
+            else:
+                self._visited_nodes |= set([node])
 
         ret = fn(node)
         self._call_visit_hooks(cls_name, node)
@@ -240,8 +254,8 @@ class ASTVisitor:
         fn = self.__visit_pre_fn_table[cls_name]
 
         # check if visited before
-        if self.has_been_visited(node):
-            if self.get_flag_state("ignore_visited"):
+        if self.get_flag_state("ignore_visited"):
+            if self.has_been_visited(node):
                 return node
 
         # do not visit children if we are visiting this node
@@ -252,7 +266,7 @@ class ASTVisitor:
 
         return fn(node)
 
-    def visit(self, node):
+    def visit(self, node, cleanup=True):
         """Start visting at a certain node."""
 
         def strip_name(name, prefix):
@@ -273,6 +287,8 @@ class ASTVisitor:
         self._visiting = True
         ret = self._visit(node)
         self._visiting = False
+        if cleanup:
+            self._cleanup_visit()
         return ret
 
     def _visit_default(self, node):
@@ -302,6 +318,7 @@ class ASTVisitor:
             to_visit = getattr(node, attr)
         ret = self._visit(to_visit)
         if ret != to_visit:
+            del to_visit
             if ret is not None:
                 if attr is not None:
                     setattr(node, attr, ret)
@@ -311,6 +328,7 @@ class ASTVisitor:
             # deleted
             if attr is not None:
                 setattr(node, attr, None)
+
             return None
         # not modified
         return False
@@ -382,6 +400,11 @@ class ASTVisitor:
                         else:
                             to_insert = result
 
+                        for _value in to_insert:
+                            if isinstance(_value, ScoffASTObject):
+                                _value.parent = node
+                                _value._parent_key = attr_name
+
                         before = attr_value[: idx + insertion_offset]
                         after = attr_value[idx + insertion_offset + 1 :]
                         before.extend(to_insert)
@@ -392,10 +415,18 @@ class ASTVisitor:
                     deletion_offset = 0
                     for idx in to_delete:
                         try:
+                            # NOTE do not assign list element to variable as it
+                            # creates one more reference
+                            if isinstance(
+                                attr_value[idx + deletion_offset],
+                                ScoffASTObject,
+                            ):
+                                attr_value[idx + deletion_offset].parent = None
                             del attr_value[idx + deletion_offset]
                             deletion_offset -= 1
                         except Exception:
                             # couldn't delete!
+                            print("failed")
                             pass
                     # modify
                     setattr(node, attr_name, attr_value)
@@ -418,19 +449,11 @@ class ASTVisitor:
             replaces = None
         else:
             replaces = node
-        self._store_visit(VisitHistory(ret, replaces, self._visit_depth))
+        history_len = self.get_option("history_len")
+        if history_len > 0:
+            self._store_visit(VisitHistory(ret, replaces, self._visit_depth))
         self._visit_depth -= 1
         return ret
-
-    def is_child_of_type(self, node, type_name):
-        """Detect if parent of type is available."""
-        if not hasattr(node, "parent"):
-            return False
-        if node.parent is not None:
-            if node.parent.__class__.__name__ == type_name:
-                return True
-            return self.is_child_of_type(node.parent, type_name)
-        return False
 
     def find_parent_by_type(self, node, parent_type, level=1):
         """Find nth hierarchical ocurrence of type, upwards."""

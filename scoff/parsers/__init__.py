@@ -7,47 +7,128 @@ import copy
 class ScoffASTObject:
     """Scoff abstract syntax tree object."""
 
-    SCOFF_META = {}
-
     def __init__(self, **kwargs):
         """Initialize."""
-        self.__non_visitable_children_names = []
-        self.__visitable_children_names = []
+        self._initialized = False
+        self._non_visitable_children_names = []
+        self._visitable_children_names = []
+        self._parent = None
+        self._parent_key = None
+        self.SCOFF_META = {}
         if "SCOFF_META" in kwargs:
             self.SCOFF_META = kwargs.pop("SCOFF_META")
         else:
             self.SCOFF_META = {}
         for name, value in kwargs.items():
             # ignore special names
+            if isinstance(value, ScoffASTObject) and name != "parent":
+                value.parent = self
+                value._parent_key = name
             if not name.startswith("_") and name != "parent":
-                self.__visitable_children_names.append(name)
+                self._visitable_children_names.append(name)
             else:
-                self.__non_visitable_children_names.append(name)
+                self._non_visitable_children_names.append(name)
             setattr(self, name, value)
 
+        self._initialized = True
+
+    def __setattr__(self, name, value):
+        if hasattr(self, "_initialized") and self._initialized:
+            if name in self._visitable_children_names:
+                if isinstance(value, ScoffASTObject):
+                    value.parent = self
+                    value._parent_key = name
+                elif isinstance(value, (tuple, list)):
+                    for _value in value:
+                        if isinstance(_value, ScoffASTObject):
+                            _value.parent = self
+                            _value._parent_key = name
+                # remove reference from old object
+                old_obj = getattr(self, name)
+                if isinstance(old_obj, ScoffASTObject):
+                    # old_obj.parent = None
+                    pass
+                elif isinstance(old_obj, (list, tuple)):
+                    for _value in old_obj:
+                        if isinstance(_value, ScoffASTObject):
+                            # _value.parent = None
+                            pass
+                del old_obj
+        super().__setattr__(name, value)
+
     @property
-    def visitable_children(self):
-        """Get visitable children."""
-        # update
-        visitable = {
-            name: getattr(self, name)
-            for name in self.__visitable_children_names
-        }
-        return visitable
+    def parent(self):
+        """Get parent."""
+        return self._parent
+
+    @parent.setter
+    def parent(self, value):
+        """Set parent."""
+        self._parent = value
+
+    @property
+    def parent_key(self):
+        """Get key name in parent."""
+        return self._parent_key
 
     @property
     def visitable_children_names(self):
         """Get names of visitable children."""
-        return self.__visitable_children_names
+        return self._visitable_children_names
+
+    @property
+    def nonvisitable_children_names(self):
+        """Get names of children that are not visitable."""
+        return self._non_visitable_children_names
+
+    def _remove_backreferences(self):
+        # print("__del__ called on {}".format(self.__class__.__name__))
+        for member_name in self.visitable_children_names:
+            # might already have been deleted
+            if member_name in self.__dict__:
+                child = getattr(self, member_name)
+                if isinstance(child, ScoffASTObject):
+                    child._remove_backreferences()
+        self.parent = None
+
+    # def __del__(self):
+    #     """Destructor."""
+    #     if self.parent is not None:
+    #         # print(self.parent_key)
+    #         if (
+    #             self.parent_key is not None
+    #             and hasattr(self.parent, self.parent_key)
+    #             and getattr(self.parent, self.parent_key) == self
+    #         ):
+    #             # print(f"refusing to delete {self}")
+    #             return
+    #     # print(f"deleting {self}")
+    #     self._remove_backreferences()
+    #     for member_name in self.visitable_children_names:
+    #         # might already been deleted
+    #         if member_name in self.__dict__:
+    #             del self.__dict__[member_name]
+
+    #     for member_name in self.nonvisitable_children_names:
+    #         if member_name in self.__dict__:
+    #             del self.__dict__[member_name]
+
+    #     del self.SCOFF_META
+    #     if hasattr(self, "__visitable_children_names"):
+    #         del self.__visitable_children_names
+    #     if hasattr(self, "__non_visitable_children_names"):
+    #         del self.__non_visitable_children_names
+    #     if hasattr(self, "parent"):
+    #         del self._parent
 
     def __dir__(self):
         """Get dir."""
-        return self.__visitable_children_names
+        return self._visitable_children_names
 
     def __deepcopy__(self, memo):
         members = {}
-        for member_name, member_value in self.visitable_children.items():
-            members[member_name] = copy.deepcopy(member_value)
+        for member_name in self.visitable_children_names:
+            members[member_name] = copy.deepcopy(getattr(self, member_name))
 
         # flag as copy
         new_meta = copy.deepcopy(self.SCOFF_META)
@@ -62,7 +143,6 @@ class ScoffASTObject:
                 for _value in member_value:
                     if isinstance(_value, ScoffASTObject):
                         _value.parent = ret
-
         return ret
 
     def copy(self, parent=None):

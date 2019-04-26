@@ -1,10 +1,9 @@
 """General Parser utilities."""
 
 import re
-import sys
-import os
-from collections import namedtuple, deque
-from . import ScoffASTObject
+from collections import deque, namedtuple
+
+from scoff.parsers import ScoffASTObject
 
 # Visit history object
 VisitHistory = namedtuple("VisitHistory", ["node", "replaces", "depth"])

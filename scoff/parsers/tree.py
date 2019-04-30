@@ -12,7 +12,7 @@ VisitHistory = namedtuple("VisitHistory", ["node", "replaces", "depth"])
 class VisitError(Exception):
     """Exception while visiting."""
 
-    def __init__(self, original_exception):
+    def __init__(self, original_exception=None):
         """Initialize."""
         super().__init__()
         self.ex = original_exception
@@ -22,6 +22,8 @@ class VisitError(Exception):
         # there might be several VisitErrors inside each other
         if isinstance(self.ex, VisitError):
             return self.ex.find_embedded_exception()
+        if self.ex is None:
+            return RuntimeError("unknown error in visit")
         return self.ex
 
 

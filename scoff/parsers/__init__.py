@@ -89,6 +89,11 @@ class ScoffASTObject:
                 child = getattr(self, member_name)
                 if isinstance(child, ScoffASTObject):
                     child._remove_backreferences()
+                elif isinstance(child, (tuple, list)):
+                    for item in child:
+                        if isinstance(item, ScoffASTObject):
+                            item._remove_backreferences()
+                del child
         self.parent = None
 
     # def __del__(self):
@@ -121,6 +126,15 @@ class ScoffASTObject:
     #     if hasattr(self, "parent"):
     #         del self._parent
 
+    def delete(self):
+        """Setup for removal by garbage collector."""
+        self._remove_backreferences()
+        for member_name in self.visitable_children_names:
+            if member_name in self.__dict__:
+                if isinstance(self.__dict__[member_name], ScoffASTObject):
+                    self.__dict__[member_name].delete()
+                del self.__dict__[member_name]
+
     def __dir__(self):
         """Get dir."""
         return self._visitable_children_names
@@ -133,6 +147,16 @@ class ScoffASTObject:
         # flag as copy
         new_meta = copy.deepcopy(self.SCOFF_META)
         new_meta["ast_copy"] = True
+        if hasattr(self, "_tx_position"):
+            original_start_loc = self._tx_position
+        else:
+            original_start_loc = None
+        if hasattr(self, "_tx_position_end"):
+            original_end_loc = self._tx_position_end
+        else:
+            original_end_loc = None
+        new_meta["original_end_loc"] = original_end_loc
+        new_meta["original_start_loc"] = original_start_loc
 
         ret = self.__class__(parent=None, SCOFF_META=new_meta, **members)
 

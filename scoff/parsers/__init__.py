@@ -13,6 +13,7 @@ class ScoffASTObject:
         "SCOFF_META",
         "_visitable_children_names",
         "_non_visitable_children_names",
+        "_initialized",
     )
 
     def __init__(self, **kwargs):

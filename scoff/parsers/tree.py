@@ -428,7 +428,6 @@ class ASTVisitor:
                             deletion_offset -= 1
                         except Exception:
                             # couldn't delete!
-                            print("failed")
                             pass
                     # modify
                     setattr(node, attr_name, attr_value)

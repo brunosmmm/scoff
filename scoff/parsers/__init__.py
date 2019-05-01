@@ -7,6 +7,14 @@ import copy
 class ScoffASTObject:
     """Scoff abstract syntax tree object."""
 
+    __slots__ = (
+        "_parent",
+        "_parent_key",
+        "SCOFF_META",
+        "_visitable_children_names",
+        "_non_visitable_children_names",
+    )
+
     def __init__(self, **kwargs):
         """Initialize."""
         self._initialized = False

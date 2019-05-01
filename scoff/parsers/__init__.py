@@ -213,11 +213,20 @@ def make_ast_class(class_name, subclass_of, **members):
     else:
         class_decl = "class {}({}):\n".format(class_name, subclass_of.__name__)
         _global = {subclass_of.__name__: subclass_of}
-    member_decl = "\n".join(
-        ["{} = {}".format(name, value) for name, value in members.items()]
+    class_decl += " " * 4 + "__slots__ = ({})\n".format(
+        ", ".join('"{}"'.format(name) for name in members)
+    )
+    init_decl = "def __init__(self, {}):\n".format(
+        ", ".join(["{}=None".format(name) for name in members])
+    )
+    init_decl += "\n".join(
+        [
+            "    self.{} = {}".format(name, value)
+            for name, value in members.items()
+        ]
     )
 
-    exec(class_decl + textwrap.indent(member_decl, "    "), _global, _local)
+    exec(class_decl + textwrap.indent(init_decl, " " * 4), _global, _local)
 
     return _local[class_name]
 
@@ -226,7 +235,7 @@ def make_ast_object(cls, subclass_of, *init_args, **members):
     """Make object."""
 
     def fake_class_obj(cls_name):
-        cls = make_ast_class(cls_name, subclass_of, _dummy_ast=True)
+        cls = make_ast_class(cls_name, subclass_of)
         obj = cls(*init_args)
         for name, value in members.items():
             setattr(obj, name, value)

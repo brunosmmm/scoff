@@ -14,6 +14,7 @@ class ScoffASTObject:
         "_visitable_children_names",
         "_non_visitable_children_names",
         "_initialized",
+        "_textx_data",
     )
 
     def __init__(self, **kwargs):
@@ -23,6 +24,7 @@ class ScoffASTObject:
         self._visitable_children_names = []
         self._parent = None
         self._parent_key = None
+        self._textx_data = {}
         self.SCOFF_META = {}
         if "SCOFF_META" in kwargs:
             self.SCOFF_META = kwargs.pop("SCOFF_META")
@@ -37,7 +39,10 @@ class ScoffASTObject:
                 self._visitable_children_names.append(name)
             else:
                 self._non_visitable_children_names.append(name)
-            setattr(self, name, value)
+            if name.startswith("_tx"):
+                self._textx_data[name] = value
+            else:
+                setattr(self, name, value)
 
         self._initialized = True
 
@@ -63,7 +68,27 @@ class ScoffASTObject:
                             # _value.parent = None
                             pass
                 del old_obj
+        if name.startswith("_tx"):
+            # how is this even possible?
+            if not hasattr(self, "_textx_data"):
+                self._textx_data = {}
+            self._textx_data[name] = value
+            return
         super().__setattr__(name, value)
+
+    def __getattr__(self, name):
+        if name.startswith("_tx"):
+            if name in self._textx_data:
+                return self._textx_data[name]
+
+        raise AttributeError(name)
+
+    def __delattr__(self, name):
+        if name.startswith("_tx"):
+            if name in self._textx_data:
+                del self._textx_data[name]
+                return
+        super().__delattr__(name)
 
     @property
     def parent(self):
@@ -156,16 +181,8 @@ class ScoffASTObject:
         # flag as copy
         new_meta = copy.deepcopy(self.SCOFF_META)
         new_meta["ast_copy"] = True
-        if hasattr(self, "_tx_position"):
-            original_start_loc = self._tx_position
-        else:
-            original_start_loc = None
-        if hasattr(self, "_tx_position_end"):
-            original_end_loc = self._tx_position_end
-        else:
-            original_end_loc = None
-        new_meta["original_end_loc"] = original_end_loc
-        new_meta["original_start_loc"] = original_start_loc
+        new_meta["original_end_loc"] = self._textx_data.get("_tx_position_end")
+        new_meta["original_start_loc"] = self._textx_data.get("_tx_position")
 
         ret = self.__class__(parent=None, SCOFF_META=new_meta, **members)
 

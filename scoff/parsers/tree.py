@@ -157,7 +157,7 @@ class ASTVisitor:
         else:
             node_dict = [
                 name
-                for name in node.__dict__
+                for name in node.__slots__
                 if not name.startswith("_") and name != "parent"
             ]
         for attr_name in node_dict:
@@ -185,7 +185,7 @@ class ASTVisitor:
         else:
             node_dict = [
                 name
-                for name in root.__dict__
+                for name in root.__slots__
                 if not name.startswith("_") and name != "parent"
             ]
         occurrences = []
@@ -359,7 +359,7 @@ class ASTVisitor:
             if not isinstance(node, ScoffASTObject):
                 visit_list = [
                     item
-                    for item in node.__dict__
+                    for item in node.__slots__
                     if not item.startswith("_") and item != "parent"
                 ]
             else:

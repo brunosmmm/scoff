@@ -208,7 +208,9 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         """Overall symbol lookup."""
         ret = []
         if name in self._collected_globals:
-            ret.append([self._collected_globals[name], self._collected_globals])
+            ret.append(
+                [self._collected_globals[name], self._collected_globals]
+            )
 
         for location, (end_loc, scope) in self._collected_scopes.items():
             if name in scope:

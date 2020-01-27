@@ -201,7 +201,9 @@ class ASTVisitor:
                 occurrences.append(attr)
             elif isinstance(attr, (list, tuple)):
                 for obj in attr:
-                    occurrences.extend(self.get_all_occurrences(obj, node_type))
+                    occurrences.extend(
+                        self.get_all_occurrences(obj, node_type)
+                    )
             elif isinstance(attr, str):
                 return []
             else:
@@ -407,7 +409,6 @@ class ASTVisitor:
                             self._visited_nodes.remove(statement)
                         # process returned data
                     insertion_offset = 0
-                    attr_list = []
                     for idx, result in modified_statements.items():
                         if not isinstance(result, (tuple, list)):
                             to_insert = [result]
@@ -640,7 +641,9 @@ def trace_visit(fn):
     """Trace visit."""
 
     def wrapper(tree, *args):
-        tree._debug_visit("entering {}, args are: {}".format(fn.__name__, args))
+        tree._debug_visit(
+            "entering {}, args are: {}".format(fn.__name__, args)
+        )
         ret = fn(tree, *args)
         tree._debug_visit("exiting {}, returned: {}".format(fn.__name__, ret))
         return ret

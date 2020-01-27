@@ -155,10 +155,9 @@ class ASTVisitor:
         if isinstance(node, ScoffASTObject):
             node_dict = node.visitable_children_names
         else:
-            if hasattr(node, "__slots__"):
-                items = node.__slots__
-            else:
-                items = node.__dict__
+            items = (
+                node.__slots__ if hasattr(node, "__slots__") else node.__dict__
+            )
             node_dict = [
                 name
                 for name in items
@@ -187,10 +186,9 @@ class ASTVisitor:
         if isinstance(root, ScoffASTObject):
             node_dict = root.visitable_children_names
         else:
-            if hasattr(node, "__slots__"):
-                items = node.__slots__
-            else:
-                items = node.__dict__
+            items = (
+                root.__slots__ if hasattr(root, "__slots__") else root.__dict__
+            )
             node_dict = [
                 name
                 for name in items
@@ -366,10 +364,11 @@ class ASTVisitor:
             visit_list = None
             if not isinstance(node, ScoffASTObject):
                 # use slots if available
-                if hasattr(node, "__slots__"):
-                    visit_items = node.__slots__
-                else:
-                    visit_items = node.__dict__
+                visit_items = (
+                    node.__slots__
+                    if hasattr(node, "__slots__")
+                    else node.__dict__
+                )
                 visit_list = [
                     item
                     for item in visit_items

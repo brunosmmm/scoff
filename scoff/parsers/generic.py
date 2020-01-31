@@ -51,6 +51,6 @@ class DataParser:
     def parse(self, data):
         """Parse data."""
         while len(data):
-            size, _, _ = self._current_state_function(data)
+            size = self._current_state_function(data)
             # consume data
             data = data[size + 1 :]

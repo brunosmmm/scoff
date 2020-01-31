@@ -39,7 +39,7 @@ class DataParser:
                 for num in range(candidate.options["pop_state"]):
                     state = self._state_stack.popleft()
                 self._state = state
-            return (size, fields)
+            return (size, candidate, fields)
         raise ParserError("could not parse data")
 
     def _current_state_function(self, data):
@@ -51,6 +51,6 @@ class DataParser:
     def parse(self, data):
         """Parse data."""
         while len(data):
-            size, fields = self._current_state_function(data)
+            size, _, _ = self._current_state_function(data)
             # consume data
             data = data[size + 1 :]

@@ -37,9 +37,9 @@ class DataParser:
                 continue
 
             options = candidate.options.copy()
-            change_state = options.pop("change_state")
-            push_state = options.pop("push_state")
-            pop_state = options.pop("pop_state")
+            change_state = options.pop("change_state", None)
+            push_state = options.pop("push_state", None)
+            pop_state = options.pop("pop_state", None)
             if change_state is not None:
                 self._state = change_state
             elif push_state is not None:

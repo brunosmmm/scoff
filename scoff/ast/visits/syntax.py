@@ -1,7 +1,11 @@
 """Basic Syntax checker pass."""
 
-from .tree import ASTVisitor, VisitError
-from .errors import ErrorCodeException, ErrorDescriptor, ErrorGeneratorMixin
+from scoff.ast.visits import ASTVisitor, VisitError
+from scoff.errors import (
+    ErrorCodeException,
+    ErrorDescriptor,
+    ErrorGeneratorMixin,
+)
 from collections import deque, OrderedDict
 
 

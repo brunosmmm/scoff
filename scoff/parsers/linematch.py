@@ -1,6 +1,7 @@
 """Generic line matcher."""
 
 import re
+from typing import Union, Any, Tuple, Dict
 from scoff.parsers.token import SimpleToken, SimpleTokenField
 
 
@@ -11,7 +12,7 @@ class MatcherError(Exception):
 class LineMatcher:
     """Line matcher."""
 
-    def __init__(self, *tokens, **kwargs):
+    def __init__(self, *tokens: Union[str, SimpleToken], **kwargs: Any):
         """Initialize."""
         self._tokens = []
         for token in tokens:
@@ -39,7 +40,7 @@ class LineMatcher:
         """Get options."""
         return self._options
 
-    def parse_first(self, text):
+    def parse_first(self, text: str) -> Tuple[int, Dict[str, str]]:
         """Try to parse first occurrence."""
         match = self._pattern.match(text)
         if match is None:
@@ -54,7 +55,7 @@ class LineMatcher:
             },
         )
 
-    def parse(self, line):
+    def parse(self, line: str) -> Dict[str, str]:
         """Parse a line."""
         match = self._pattern.match(line)
         if match is None:

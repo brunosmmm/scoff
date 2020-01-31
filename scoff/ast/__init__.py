@@ -165,7 +165,13 @@ class ScoffASTObject:
         return ret
 
     def copy(self, parent=None):
-        """Get a copy."""
+        """Get a copy.
+
+        Arguments
+        ---------
+        parent
+          A node to set as parent after copying
+        """
         ret = copy.deepcopy(self)
         ret.parent = parent
         return ret

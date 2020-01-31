@@ -1,10 +1,14 @@
 """Error generation."""
 
+from typing import Any, Union
+
 
 class ErrorCodeException(Exception):
     """Exception with error code."""
 
-    def __init__(self, message, code=None, exception=None):
+    def __init__(
+        self, message, code: Union[None, str, int] = None, exception=None
+    ):
         """Initialize."""
         self.msg = message
         self.code = code

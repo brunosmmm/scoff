@@ -1,6 +1,7 @@
 """Generic regex-based parser."""
 
 from collections import deque
+from typing import Union, Any, List, Deque, Tuple, Dict
 from scoff.parsers.linematch import MatcherError, LineMatcher
 
 
@@ -11,9 +12,15 @@ class ParserError(Exception):
 class DataParser:
     """Simple data parser."""
 
-    def __init__(self, initial_state=None):
-        """Initialize."""
-        self._state_stack = deque()
+    def __init__(self, initial_state: Union[str, int, None] = None):
+        """Initialize.
+
+        Arguments
+        ---------
+        initial_state
+          Initial state of the parser
+        """
+        self._state_stack: Deque[Union[str, int, None]] = deque()
         self._state = initial_state
 
     @property
@@ -24,10 +31,12 @@ class DataParser:
     def _handle_match(self, candidate):
         """Handle candidate match."""
 
-    def _handle_options(self, **options):
+    def _handle_options(self, **options: Any):
         """Handle candidate options."""
 
-    def _try_parse(self, candidates, data):
+    def _try_parse(
+        self, candidates: List[LineMatcher], data: str
+    ) -> Tuple[int, LineMatcher, Dict[str, str]]:
         for candidate in candidates:
             try:
                 if not isinstance(candidate, LineMatcher):
@@ -57,14 +66,20 @@ class DataParser:
             return (size, candidate, fields)
         raise ParserError("could not parse data")
 
-    def _current_state_function(self, data):
+    def _current_state_function(self, data: str) -> int:
         if not hasattr(self, "_state_{}".format(self._state)):
             raise RuntimeError(f"in unknown state: {self._state}")
 
         return getattr(self, "_state_{}".format(self._state))(data)
 
-    def parse(self, data):
-        """Parse data."""
+    def parse(self, data: str):
+        """Parse data.
+
+        Arguments
+        ---------
+        data
+          Textual data to be parsed
+        """
         while len(data):
             size = self._current_state_function(data)
             # consume data

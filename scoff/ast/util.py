@@ -1,11 +1,22 @@
 """AST utility functions."""
 
-from scoff.ast import ScoffASTObject
 import textwrap
+from typing import Type, Any, Union
+from scoff.ast import ScoffASTObject
 
 
-def make_ast_class(class_name, subclass_of, **members):
-    """Make class on the fly."""
+def make_ast_class(class_name: str, subclass_of: Type, **members: Any) -> Type:
+    """Make class on the fly.
+
+    Arguments
+    ---------
+    class_name
+      Name of class to construct
+    subclass_of
+      Which class to inherit from
+    members
+      Members of the dynamically constructed class
+    """
     _global = {}
     _local = {}
     # comply with textX stuff being used
@@ -33,8 +44,22 @@ def make_ast_class(class_name, subclass_of, **members):
     return _local[class_name]
 
 
-def make_ast_object(cls, subclass_of, *init_args, **members):
-    """Make object."""
+def make_ast_object(
+    cls: Union[str, Type], subclass_of: Type, *init_args: Any, **members: Any
+) -> Any:
+    """Make object.
+
+    Arguments
+    ---------
+    cls
+      AST Object class
+    subclass_of
+      Which class to inherit from
+    init_args
+      Object constructor arguments
+    members
+      Keyword arguments passed into constructor if subclass of ScoffASTObject
+    """
 
     def fake_class_obj(cls_name):
         cls = make_ast_class(cls_name, subclass_of)
@@ -58,7 +83,10 @@ def make_ast_object(cls, subclass_of, *init_args, **members):
 
 
 def make_ast(tree_dict, parent_name=None, depth=0):
-    """Make an ast from scratch."""
+    """Make an ast from scratch.
+
+    Marked for deprecation
+    """
     if len(tree_dict) != 1 and depth == 0:
         # error
         raise RuntimeError("only one root node allowed")

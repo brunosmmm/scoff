@@ -4,7 +4,7 @@
 class SimpleToken:
     """A simple token."""
 
-    def __init__(self, regex):
+    def __init__(self, regex: str):
         """Initialize."""
         if not isinstance(regex, str):
             raise TypeError("must be string")
@@ -19,7 +19,7 @@ class SimpleToken:
 class SimpleTokenField(SimpleToken):
     """A field token."""
 
-    def __init__(self, field_name, regex):
+    def __init__(self, field_name: str, regex: str):
         """Initialize."""
         super().__init__(regex)
         self._name = field_name

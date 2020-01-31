@@ -1,12 +1,15 @@
-"""General Parser utilities."""
+"""AST Visitors."""
 
-import re
-from collections import namedtuple, deque
-from scoff.parsers import ScoffASTObject
-from scoff.parsers.visits import ScoffVisitObject
+from collections import deque, namedtuple
+from scoff.ast import ScoffASTObject
+from scoff.ast.visits.objects import ScoffVisitObject
 
 # Visit history object
 VisitHistory = namedtuple("VisitHistory", ["node", "replaces", "depth"])
+
+
+class NoChildrenVisits(Exception):
+    """Controlled error to escape event sequence."""
 
 
 class VisitError(Exception):
@@ -25,10 +28,6 @@ class VisitError(Exception):
         if self.ex is None:
             return RuntimeError("unknown error in visit")
         return self.ex
-
-
-class NoChildrenVisits(Exception):
-    """Controlled error to escape event sequence."""
 
 
 class ASTVisitor:
@@ -482,203 +481,3 @@ class ASTVisitor:
                 return node.parent
             return self.find_parent_by_type(node.parent, parent_type, level)
         return None
-
-
-class ExclusiveASTVisitor(ASTVisitor):
-    """Exclusive visits."""
-
-    def __init__(self, *disallowed, **options):
-        """Initialize."""
-        super().__init__(**options)
-        # allowed, disallowed prefixes
-        self._not_allowed = set()
-        self._allowed_visits = set()
-        self.add_disallowed_prefixes(*disallowed)
-        # exclusive visits
-        self.__allowed_matches = []
-        self.__not_allowed_matches = []
-        if self.get_flag_state("exclusive_visit"):
-            self.set_flag("minimal_depth")
-            self._allowed_visits = {
-                "^{}$".format(name[6:])
-                for name in self._method_names
-                if name.startswith("visit_")
-            }
-
-    def visit(self, node):
-        """Begin visit."""
-        # pre-compile regular expressions
-        self.__not_allowed_matches = [
-            re.compile(disallowed) for disallowed in self._not_allowed
-        ]
-        self.__allowed_matches = [
-            re.compile(allowed) for allowed in self._allowed_visits
-        ]
-        return super().visit(node)
-
-    def add_disallowed_prefixes(self, *prefixes):
-        """Disallow visiting of attributes with a prefix."""
-        if self._visiting is True:
-            raise VisitError("cannot alter disallowed prefixes while visiting")
-        self._not_allowed |= set(prefixes)
-
-    def add_allowed_prefixes(self, *prefixes):
-        """Add allowed prefixes."""
-        if self._visiting is True:
-            raise VisitError("cannot alter allowed prefixes while visiting")
-        self._allowed_visits |= set(prefixes)
-
-    def _check_visit_allowed(self, name):
-        if self.get_flag_state("exclusive_visit"):
-            for allowed in self.__allowed_matches:
-                if allowed.match(name) is not None:
-                    return True
-            return False
-        # else
-        for disallowed in self.__not_allowed_matches:
-            if disallowed.match(name) is not None:
-                return False
-
-        return True
-
-
-class SetFlag:
-    """Set flag on visit."""
-
-    def __init__(self, flag_name):
-        """Initialize."""
-        self._flag = flag_name
-
-    def __call__(self, fn):
-        """Call."""
-
-        def wrapper(tree, node):
-            tree.set_flag(self._flag)
-            return fn(tree, node)
-
-        return wrapper
-
-
-class SetFlagAfter:
-    """Set flag on visit."""
-
-    def __init__(self, flag_name):
-        """Initialize."""
-        self._flag = flag_name
-
-    def __call__(self, fn):
-        """Call."""
-
-        def wrapper(tree, node):
-            ret = fn(tree, node)
-            tree.set_flag(self._flag)
-            return ret
-
-        return wrapper
-
-
-class ClearFlag:
-    """Clear flag on visit."""
-
-    def __init__(self, flag_name):
-        """Initialize."""
-        self._flag = flag_name
-
-    def __call__(self, fn):
-        """Call."""
-
-        def wrapper(tree, node):
-            tree.clear_flag(self._flag)
-            return fn(tree, node)
-
-        return wrapper
-
-
-class ClearFlagAfter:
-    """Clear flag on visit."""
-
-    def __init__(self, flag_name):
-        """Initialize."""
-        self._flag = flag_name
-
-    def __call__(self, fn):
-        """Call."""
-
-        def wrapper(tree, node):
-            ret = fn(tree, node)
-            tree.clear_flag(self._flag)
-            return ret
-
-        return wrapper
-
-
-class ConditionalVisit:
-    """Conditional visit."""
-
-    def __init__(self, flag_name, inverted=False):
-        """Initialize."""
-        self._flag = flag_name
-        self._inverted = inverted
-
-    def __call__(self, fn):
-        """Call."""
-
-        def wrapper(tree, node):
-            if self._inverted is True:
-                if tree.get_flag_state(self._flag) is False:
-                    return fn(tree, node)
-                else:
-                    return node
-            elif tree.get_flag_state(self._flag) is True:
-                return fn(tree, node)
-            else:
-                return node
-
-        return wrapper
-
-
-def trace_visit(fn):
-    """Trace visit."""
-
-    def wrapper(tree, *args):
-        tree._debug_visit(
-            "entering {}, args are: {}".format(fn.__name__, args)
-        )
-        ret = fn(tree, *args)
-        tree._debug_visit("exiting {}, returned: {}".format(fn.__name__, ret))
-        return ret
-
-    return wrapper
-
-
-def stop_visiting(fn):
-    """No further visits."""
-
-    def wrapper(tree, *args):
-        ret = fn(tree, *args)
-        tree.set_flag("stop_visit")
-        return ret
-
-    return wrapper
-
-
-def no_child_visits(fn):
-    """No children visits."""
-
-    def wrapper(tree, *args):
-        ret = fn(tree, *args)
-        tree.set_flag("no_children_visits")
-        return ret
-
-    return wrapper
-
-
-def reverse_visit_order(fn):
-    """Reverse visit order."""
-
-    def wrapper(tree, *args):
-        ret = fn(tree, *args)
-        tree.set_flag("reverse_visit")
-        return ret
-
-    return wrapper

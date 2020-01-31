@@ -1,7 +1,9 @@
 """Parse dependencies in designs."""
 
-from scoff.parsers.includes import (IncludeManagerMixin,
-                                    IncludeAlreadyVisitedError)
+from scoff.includes import (
+    IncludeManagerMixin,
+    IncludeAlreadyVisitedError,
+)
 
 
 class DependencyFinderError(Exception):
@@ -28,12 +30,12 @@ class DependencyFinder(IncludeManagerMixin):
         """Find and build dependency map."""
         try:
             ret = self._find_dependencies(self._main, depth)
-            return(ret)
+            return ret
         except Exception as ex:
             raise
 
     def _find_dependencies(self, filepath, depth=-1):
-        with open(filepath, 'r') as f:
+        with open(filepath, "r") as f:
             main_txt = f.readlines()
 
         # simple regex parser
@@ -51,6 +53,6 @@ class DependencyFinder(IncludeManagerMixin):
                 except IncludeAlreadyVisitedError:
                     pass
                 except Exception as ex:
-                    raise DependencyFinderError('failed to inspect')
+                    raise DependencyFinderError("failed to inspect")
 
         return self._depends_on

@@ -1,6 +1,6 @@
 """Node remover."""
 
-from ..parsers.tree import ASTVisitor
+from scoff.ast.visits import ASTVisitor
 
 
 class NodeRemover(ASTVisitor):

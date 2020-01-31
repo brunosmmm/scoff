@@ -1,7 +1,7 @@
 """AST Duplicator."""
 
-from scoff.parsers.tree import ASTVisitor
-from scoff.parsers import ScoffASTObject, make_ast_object
+from scoff.ast.visits import ASTVisitor
+from scoff.ast import ScoffASTObject
 
 import copy
 

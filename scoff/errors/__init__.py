@@ -1,4 +1,4 @@
-"""Parsing error generation."""
+"""Error generation."""
 
 
 class ErrorCodeException(Exception):
@@ -13,10 +13,10 @@ class ErrorCodeException(Exception):
     def __repr__(self):
         """Representation."""
         if self.code is not None:
-            err_code = '(#{})'.format(self.code)
+            err_code = "(#{})".format(self.code)
         else:
-            err_code = ''
-        return '{} {}'.format(err_code, self.msg)
+            err_code = ""
+        return "{} {}".format(err_code, self.msg)
 
     def __str__(self):
         """Get string."""
@@ -29,8 +29,10 @@ class ErrorDescriptor:
     def __init__(self, error_code, brief, fmt_str, exception_class):
         """Initialize."""
         if not issubclass(exception_class, ErrorCodeException):
-            raise TypeError('argument "exception_class" must be an instance '
-                            'of type ErrorCodeException')
+            raise TypeError(
+                'argument "exception_class" must be an instance '
+                "of type ErrorCodeException"
+            )
 
         self.code = error_code
         self.brief = brief
@@ -53,16 +55,17 @@ class ErrorGeneratorMixin:
     def get_error_from_code(self, code, errors, **msg_kwargs):
         """Get error from code."""
         if code not in errors:
-            raise KeyError('unknown error code: {}'.format(code))
+            raise KeyError("unknown error code: {}".format(code))
 
-        suffix = ''
-        prefix = ''
-        if '_msg_suffix' in msg_kwargs:
-            suffix = msg_kwargs.pop('_msg_suffix')
-        if '_msg_prefix' in msg_kwargs:
-            prefix = msg_kwargs.pop('_msg_prefix')
+        suffix = ""
+        prefix = ""
+        if "_msg_suffix" in msg_kwargs:
+            suffix = msg_kwargs.pop("_msg_suffix")
+        if "_msg_prefix" in msg_kwargs:
+            prefix = msg_kwargs.pop("_msg_prefix")
 
-        return '{prefix}{msg}{suffix}'.format(
+        return "{prefix}{msg}{suffix}".format(
             prefix=prefix,
             msg=errors[code].get_message(**msg_kwargs),
-            suffix=suffix)
+            suffix=suffix,
+        )

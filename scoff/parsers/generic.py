@@ -21,6 +21,12 @@ class DataParser:
         """Get current state."""
         return self._state
 
+    def _handle_match(self, candidate):
+        """Handle candidate match."""
+
+    def _handle_options(self, **options):
+        """Handle candidate options."""
+
     def _try_parse(self, candidates, data):
         for candidate in candidates:
             try:
@@ -30,15 +36,24 @@ class DataParser:
             except MatcherError:
                 continue
 
-            if "change_state" in candidate.options:
-                self._state = candidate.options["change_state"]
-            elif "push_state" in candidate.options:
+            options = candidate.options.copy()
+            change_state = options.pop("change_state")
+            push_state = options.pop("push_state")
+            pop_state = options.pop("pop_state")
+            if change_state is not None:
+                self._state = change_state
+            elif push_state is not None:
                 self._state_stack.append(self._state)
-                self._state = candidate.options["push_state"]
-            elif "pop_state" in candidate.options:
-                for num in range(candidate.options["pop_state"]):
+                self._state = push_state
+            elif pop_state is not None:
+                for num in range(pop_state):
                     state = self._state_stack.popleft()
                 self._state = state
+
+            # handle other options
+            self._handle_options(**options)
+            # handle other custom options
+            self._handle_match(candidate)
             return (size, candidate, fields)
         raise ParserError("could not parse data")
 

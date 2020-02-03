@@ -12,16 +12,23 @@ class ParserError(Exception):
 class DataParser:
     """Simple data parser."""
 
-    def __init__(self, initial_state: Union[str, int, None] = None):
+    def __init__(
+        self,
+        initial_state: Union[str, int, None] = None,
+        consume_spaces: bool = False,
+    ):
         """Initialize.
 
         Arguments
         ---------
         initial_state
           Initial state of the parser
+        consume_spaces
+          Consume stray space characters
         """
         self._state_stack: Deque[Union[str, int, None]] = deque()
         self._state = initial_state
+        self._consume = consume_spaces
 
     @property
     def state(self):
@@ -41,7 +48,7 @@ class DataParser:
             try:
                 if not isinstance(candidate, LineMatcher):
                     raise TypeError("candidate must be LineMatcher object")
-                size, fields = candidate.parse_first(data)
+                size, fields = candidate.parse_first(data, strip=self._consume)
             except MatcherError:
                 continue
 

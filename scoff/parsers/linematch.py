@@ -40,15 +40,21 @@ class LineMatcher:
         """Get options."""
         return self._options
 
-    def parse_first(self, text: str) -> Tuple[int, Dict[str, str]]:
+    def parse_first(
+        self, text: str, strip: bool = False
+    ) -> Tuple[int, Dict[str, str]]:
         """Try to parse first occurrence."""
+        gobbled_chars = 0
+        if strip:
+            while text.startswith(" "):
+                text = text[1:]
         match = self._pattern.match(text)
         if match is None:
             raise MatcherError("failed to parse.")
         _, match_size = match.span()
 
         return (
-            match_size,
+            match_size + gobbled_chars,
             {
                 field.name: value
                 for field, value in zip(self._ordered_fields, match.groups())

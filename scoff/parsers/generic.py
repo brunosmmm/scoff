@@ -29,8 +29,8 @@ class DataParser:
         self._state_stack: Deque[Union[str, int, None]] = deque()
         self._state = initial_state
         self._consume = consume_spaces
-        self._current_position = 0
-        self._current_line = 0
+        self._current_position = 1
+        self._current_line = 1
 
     @property
     def state(self):
@@ -76,7 +76,7 @@ class DataParser:
             self._current_position += size
             # advance line
             matched_str = data[:size]
-            self._current_line += matched_str.count("\n")
+            self._current_line += matched_str.count("\n") + 1
             return (size, candidate, fields)
         raise ParserError("could not parse data")
 
@@ -104,8 +104,8 @@ class DataParser:
         data
           Textual data to be parsed
         """
-        self._current_position = 0
-        self._current_line = 0
+        self._current_position = 1
+        self._current_line = 1
         while len(data):
             size = self._current_state_function(data)
             # consume data

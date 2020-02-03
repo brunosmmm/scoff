@@ -1,8 +1,11 @@
 """Generic regex-based parser."""
 
+import re
 from collections import deque
 from typing import Union, Any, List, Deque, Tuple, Dict
 from scoff.parsers.linematch import MatcherError, LineMatcher
+
+EMPTY_LINE = re.compile(r"\s*$")
 
 
 class ParserError(Exception):
@@ -43,10 +46,15 @@ class DataParser:
     def _handle_options(self, **options: Any):
         """Handle candidate options."""
 
-    # FIXME: does not consume empty lines
     def _try_parse(
         self, candidates: List[LineMatcher], data: str
     ) -> Tuple[int, LineMatcher, Dict[str, str]]:
+        newline_position = data.find("\n")
+        line = data[:newline_position]
+        if self._consume and EMPTY_LINE.match(line) is not None:
+            # an empty line, consume
+            return (newline_position, None, None)
+
         for candidate in candidates:
             try:
                 if not isinstance(candidate, LineMatcher):

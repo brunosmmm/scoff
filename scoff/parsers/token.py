@@ -1,12 +1,14 @@
 """Generic Parser tokens."""
 
+from typing import Union
+
 
 class SimpleToken:
     """A simple token."""
 
-    def __init__(self, regex: str):
+    def __init__(self, regex: Union[str, bytes]):
         """Initialize."""
-        if not isinstance(regex, str):
+        if not isinstance(regex, (str, bytes)):
             raise TypeError("must be string")
         self._regex = regex
 
@@ -19,7 +21,9 @@ class SimpleToken:
 class SimpleTokenField(SimpleToken):
     """A field token."""
 
-    def __init__(self, field_name: str, regex: str):
+    def __init__(
+        self, field_name: Union[str, bytes], regex: Union[str, bytes]
+    ):
         """Initialize."""
         super().__init__(regex)
         self._name = field_name

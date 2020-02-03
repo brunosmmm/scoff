@@ -12,13 +12,18 @@ class MatcherError(Exception):
 class LineMatcher:
     """Line matcher."""
 
-    def __init__(self, *tokens: Union[str, SimpleToken], **kwargs: Any):
+    def __init__(
+        self,
+        *tokens: Union[str, SimpleToken],
+        gobble: bool = True,
+        **kwargs: Any
+    ):
         """Initialize."""
         self._tokens = []
         for token in tokens:
-            if not isinstance(token, (str, SimpleToken)):
+            if not isinstance(token, (str, bytes, SimpleToken)):
                 raise TypeError("tokens must be either string or SimpleToken")
-            if isinstance(token, str):
+            if isinstance(token, (str, bytes)):
                 self._tokens.append(SimpleToken(token))
             else:
                 self._tokens.append(token)
@@ -29,8 +34,11 @@ class LineMatcher:
             if isinstance(token, SimpleTokenField)
         ]
 
+        self._gobble = gobble
+        gobble_str = b"\s*" if gobble is True else b""
         self._pattern = re.compile(
-            r"^" + r"".join([token.regex for token in self._tokens]), re.S
+            gobble_str + b"".join([token.regex for token in self._tokens]),
+            re.S,
         )
 
         self._options = kwargs
@@ -41,24 +49,26 @@ class LineMatcher:
         return self._options
 
     def parse_first(
-        self, text: str, strip: bool = False
+        self, text: bytes, position: int
     ) -> Tuple[int, Dict[str, str]]:
         """Try to parse first occurrence."""
-        gobbled_chars = 0
-        if strip:
-            while text.startswith(" "):
-                gobbled_chars += 1
-                text = text[1:]
-        match = self._pattern.match(text)
+        match = self._pattern.match(text, position)
         if match is None:
             raise MatcherError("failed to parse.")
-        _, match_size = match.span()
+        start, end = match.span()
+
+        decoded_groups = []
+        for group in match.groups():
+            if group is None:
+                decoded_groups.append(None)
+            else:
+                decoded_groups.append(group.decode())
 
         return (
-            match_size + gobbled_chars,
+            end - start,
             {
                 field.name: value
-                for field, value in zip(self._ordered_fields, match.groups())
+                for field, value in zip(self._ordered_fields, decoded_groups)
             },
         )
 

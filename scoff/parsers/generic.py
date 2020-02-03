@@ -5,7 +5,7 @@ from collections import deque
 from typing import Union, Any, List, Deque, Tuple, Dict
 from scoff.parsers.linematch import MatcherError, LineMatcher
 
-EMPTY_LINE = re.compile(r"\s*$")
+EMPTY_LINE = re.compile(b"\s*$")
 
 
 class ParserError(Exception):
@@ -34,6 +34,7 @@ class DataParser:
         self._consume = consume_spaces
         self._current_position = 1
         self._current_line = 1
+        self._data = None
 
     @property
     def state(self):
@@ -47,19 +48,19 @@ class DataParser:
         """Handle candidate options."""
 
     def _try_parse(
-        self, candidates: List[LineMatcher], data: str
+        self, candidates: List[LineMatcher], position: int
     ) -> Tuple[int, LineMatcher, Dict[str, str]]:
-        newline_position = data.find("\n")
-        line = data[:newline_position]
-        if self._consume and EMPTY_LINE.match(line) is not None:
-            # an empty line, consume
-            return (newline_position, None, None)
+        if self._consume:
+            m = EMPTY_LINE.match(self._data, position)
+            if m is not None:
+                # an empty line, consume
+                return (m.span()[1], None, None)
 
         for candidate in candidates:
             try:
                 if not isinstance(candidate, LineMatcher):
                     raise TypeError("candidate must be LineMatcher object")
-                size, fields = candidate.parse_first(data, strip=self._consume)
+                size, fields = candidate.parse_first(self._data, position)
             except MatcherError:
                 continue
 
@@ -84,16 +85,17 @@ class DataParser:
             # advance position
             self._current_position += size
             # advance line
-            matched_str = data[:size]
-            self._current_line += matched_str.count("\n") + 1
+            self._current_line += (
+                self._data.count(b"\n", position, position + size) + 1
+            )
             return (size, candidate, fields)
         raise ParserError("could not parse data")
 
-    def _current_state_function(self, data: str) -> int:
+    def _current_state_function(self, position: int) -> int:
         if not hasattr(self, "_state_{}".format(self._state)):
             raise RuntimeError(f"in unknown state: {self._state}")
 
-        return getattr(self, "_state_{}".format(self._state))(data)
+        return getattr(self, "_state_{}".format(self._state))(position)
 
     @property
     def current_pos(self):
@@ -113,9 +115,11 @@ class DataParser:
         data
           Textual data to be parsed
         """
+        self._data = data.encode()
         self._current_position = 1
         self._current_line = 1
-        while len(data):
-            size = self._current_state_function(data)
+        current_pos = 0
+        while current_pos < len(data):
+            size = self._current_state_function(current_pos)
             # consume data
-            data = data[size + 1 :]
+            current_pos += size + 1

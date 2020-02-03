@@ -47,6 +47,7 @@ class LineMatcher:
         gobbled_chars = 0
         if strip:
             while text.startswith(" "):
+                gobbled_chars += 1
                 text = text[1:]
         match = self._pattern.match(text)
         if match is None:

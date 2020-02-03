@@ -43,6 +43,7 @@ class DataParser:
     def _handle_options(self, **options: Any):
         """Handle candidate options."""
 
+    # FIXME: does not consume empty lines
     def _try_parse(
         self, candidates: List[LineMatcher], data: str
     ) -> Tuple[int, LineMatcher, Dict[str, str]]:

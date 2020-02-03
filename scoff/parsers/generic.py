@@ -29,6 +29,8 @@ class DataParser:
         consume_spaces
           Consume stray space characters
         """
+        self._state_hooks = {}
+        super().__init__()
         self._state_stack: Deque[Union[str, int, None]] = deque()
         self._state = initial_state
         self._consume = consume_spaces
@@ -40,6 +42,18 @@ class DataParser:
     def state(self):
         """Get current state."""
         return self._state
+
+    def add_state_hook(self, state, hook):
+        """Add state hook."""
+        if not callable(hook):
+            raise TypeError("hook must be callable")
+        if state not in self.states:
+            print(self.states)
+            raise ParserError(f"unknown state '{state}'")
+        if state not in self._state_hooks:
+            self._state_hooks[state] = {hook}
+        else:
+            self._state_hooks[state] |= {hook}
 
     def _handle_match(self, candidate):
         """Handle candidate match."""
@@ -95,7 +109,14 @@ class DataParser:
         if not hasattr(self, "_state_{}".format(self._state)):
             raise RuntimeError(f"in unknown state: {self._state}")
 
-        return getattr(self, "_state_{}".format(self._state))(position)
+        size, stmt, fields = getattr(self, "_state_{}".format(self._state))(
+            position
+        )
+        # call hooks
+        if self._state in self._state_hooks:
+            for hook in self._state_hooks[self._state]:
+                hook(self._state, stmt, fields)
+        return size
 
     @property
     def current_pos(self):
@@ -106,6 +127,15 @@ class DataParser:
     def current_line(self):
         """Get current line."""
         return self._current_line
+
+    @property
+    def states(self):
+        """Get possible states."""
+        return [
+            attr_name.split("_")[2]
+            for attr_name in dir(self)
+            if attr_name.startswith("_state")
+        ]
 
     def parse(self, data: str):
         """Parse data.

@@ -37,6 +37,7 @@ class DataParser:
         self._current_position = 1
         self._current_line = 1
         self._data = None
+        self._abort = False
 
     @property
     def state(self):
@@ -118,6 +119,10 @@ class DataParser:
                 hook(self._state, stmt, fields)
         return size
 
+    def _abort_parser(self):
+        """Stop parsing."""
+        self._abort = True
+
     @property
     def current_pos(self):
         """Get current position."""
@@ -137,7 +142,7 @@ class DataParser:
             if attr_name.startswith("_state")
         ]
 
-    def parse(self, data: str):
+    def parse(self, data: str) -> int:
         """Parse data.
 
         Arguments
@@ -150,6 +155,10 @@ class DataParser:
         self._current_line = 1
         current_pos = 0
         while current_pos < len(data):
+            if self._abort is True:
+                break
             size = self._current_state_function(current_pos)
             # consume data
             current_pos += size + 1
+
+        return current_pos

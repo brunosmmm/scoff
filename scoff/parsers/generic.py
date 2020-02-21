@@ -19,6 +19,7 @@ class DataParser:
         self,
         initial_state: Union[str, int, None] = None,
         consume_spaces: bool = False,
+        **kwargs,
     ):
         """Initialize.
 
@@ -30,7 +31,7 @@ class DataParser:
           Consume stray space characters
         """
         self._state_hooks = {}
-        super().__init__()
+        super().__init__(**kwargs)
         self._state_stack: Deque[Union[str, int, None]] = deque()
         self._state = initial_state
         self._consume = consume_spaces

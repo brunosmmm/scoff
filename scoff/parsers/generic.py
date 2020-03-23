@@ -85,14 +85,11 @@ class DataParser:
             push_state = options.pop("push_state", None)
             pop_state = options.pop("pop_state", None)
             if change_state is not None:
-                self._state = change_state
+                self._change_state(change_state)
             elif push_state is not None:
-                self._state_stack.append(self._state)
-                self._state = push_state
+                self._push_state(push_state)
             elif pop_state is not None:
-                for num in range(pop_state):
-                    state = self._state_stack.popleft()
-                self._state = state
+                self._pop_state(pop_state)
 
             # handle other options
             self._handle_options(**options)
@@ -163,3 +160,18 @@ class DataParser:
             current_pos += size + 1
 
         return current_pos
+
+    def _change_state(self, new_state):
+        """Change state."""
+        self._state = new_state
+
+    def _push_state(self, new_state):
+        """Push into state stack and change state."""
+        self._state_stack.append(self._state)
+        self._change_state(new_state)
+
+    def _pop_state(self, count):
+        """Pop from state stack and change state."""
+        for num in range(count):
+            state = self._state_stack.popleft()
+        self._change_state(state)

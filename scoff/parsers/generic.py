@@ -161,9 +161,15 @@ class DataParser:
 
         return current_pos
 
+    def _state_change_handler(self, old_state, new_state):
+        """State change handler."""
+
     def _change_state(self, new_state):
         """Change state."""
+        old_state = self._state
         self._state = new_state
+        # call state change handler
+        self._state_change_handler(old_state, new_state)
 
     def _push_state(self, new_state):
         """Push into state stack and change state."""

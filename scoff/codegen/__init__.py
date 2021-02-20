@@ -79,7 +79,9 @@ class CodeGenerator:
             gen_method = getattr(element, "generate_code")
         elif element.__class__.__bases__:
             # try base class
-            alt_gen_method_name = f"gen_{element.__class__.__bases__[0]}"
+            alt_gen_method_name = (
+                f"gen_{element.__class__.__bases__[0].__name__}"
+            )
             if hasattr(self, alt_gen_method_name):
                 gen_method = getattr(self, alt_gen_method_name)
 

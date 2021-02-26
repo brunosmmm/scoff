@@ -30,7 +30,9 @@ class ErrorCodeException(Exception):
 class ErrorDescriptor:
     """Error descriptor."""
 
-    def __init__(self, error_code, brief, fmt_str, exception_class):
+    def __init__(
+        self, error_code, brief, fmt_str, exception_class, debug_callback=None
+    ):
         """Initialize."""
         if not issubclass(exception_class, ErrorCodeException):
             raise TypeError(
@@ -42,6 +44,10 @@ class ErrorDescriptor:
         self.brief = brief
         self.fmt_str = fmt_str
         self.ex_class = exception_class
+        if debug_callback is not None:
+            if not callable(debug_callback):
+                raise TypeError("debug_callback must be a callable")
+        self._debug_callback = debug_callback
 
     def get_message(self, **msg_kwargs):
         """Get error message."""
@@ -51,6 +57,11 @@ class ErrorDescriptor:
         """Get Exception."""
         err_msg = self.get_message(**msg_kwargs)
         return self.ex_class(err_msg, self.code)
+
+    @property
+    def debug_cb(self):
+        """Get debug callback."""
+        return self._debug_callback
 
 
 class ErrorGeneratorMixin:

@@ -87,13 +87,12 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
     def _enter_scope(self, location):
         if location is not None and location in self._collected_scopes:
             self._debug_visit(
-                "RE-ENTERING scope at location {}".format(location)
-            )
+                f"RE-ENTERING scope at {location}"
             # entering again
             self._scope_stack.append([location, self._collected_locals])
             _, self._collected_locals = self._collected_scopes[location]
         elif location is not None:
-            self._debug_visit("entering scope")
+            self._debug_visit(f"entering scope at {location}")
             # create new
             # new_local_scope = self._collected_locals.copy()
             self._scope_stack.append([location, self._collected_locals])

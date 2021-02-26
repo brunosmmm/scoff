@@ -63,6 +63,13 @@ class ErrorDescriptor:
         """Get debug callback."""
         return self._debug_callback
 
+    @debug_cb.setter
+    def debug_cb(self, debug_callback):
+        """Set debug callback."""
+        if not callable(debug_callback):
+            raise TypeError("debug_callback must be a callable")
+        self._debug_callback = debug_callback
+
 
 class ErrorGeneratorMixin:
     """Error generator Mixin."""

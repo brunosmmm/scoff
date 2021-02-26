@@ -87,8 +87,11 @@ class ErrorGeneratorMixin:
         if "_msg_prefix" in msg_kwargs:
             prefix = msg_kwargs.pop("_msg_prefix")
 
+        # call error callback if exists
+        err = errors[code]
+        if err.debug_cb is not None:
+            err.debug_cb(err, **msg_kwargs)
+
         return "{prefix}{msg}{suffix}".format(
-            prefix=prefix,
-            msg=errors[code].get_message(**msg_kwargs),
-            suffix=suffix,
+            prefix=prefix, msg=err.get_message(**msg_kwargs), suffix=suffix,
         )

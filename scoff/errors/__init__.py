@@ -56,7 +56,8 @@ class ErrorDescriptor:
 class ErrorGeneratorMixin:
     """Error generator Mixin."""
 
-    def get_error_from_code(self, code, errors, **msg_kwargs):
+    @staticmethod
+    def get_error_from_code(code, errors, **msg_kwargs):
         """Get error from code."""
         if code not in errors:
             raise KeyError("unknown error code: {}".format(code))

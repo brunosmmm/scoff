@@ -7,7 +7,11 @@ class ErrorCodeException(Exception):
     """Exception with error code."""
 
     def __init__(
-        self, message, code: Union[None, str, int] = None, exception=None
+        self,
+        message,
+        code: Union[None, str, int] = None,
+        exception=None,
+        alternate_node=None,
     ):
         """Initialize."""
         self.msg = message
@@ -93,5 +97,7 @@ class ErrorGeneratorMixin:
             err.debug_cb(err, **msg_kwargs)
 
         return "{prefix}{msg}{suffix}".format(
-            prefix=prefix, msg=err.get_message(**msg_kwargs), suffix=suffix,
+            prefix=prefix,
+            msg=err.get_message(**msg_kwargs),
+            suffix=suffix,
         )

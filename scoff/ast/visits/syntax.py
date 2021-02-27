@@ -146,13 +146,21 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         """Get current scope depth."""
         return len(self._scope_stack)
 
-    def find_node_line(self, node):
+    def find_node_line(self, node, alternate_node=None):
         """Find node location."""
         try:
             pos = getattr(node, "_tx_position")
+            return self._find_node_line(node, pos)
+        except AttributeError:
+            if alternate_node is None:
+                return None
+
+        # try alternate node
+        try:
+            pos = getattr(alternate_node, "_tx_position")
+            return self._find_node_line(alternate_node, pos)
         except AttributeError:
             return None
-        return self._find_node_line(node, pos)
 
     @staticmethod
     def find_node_line_in_text(txt, position):
@@ -174,15 +182,21 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         """Find line where node is located."""
         return self.find_node_line_in_text(self._text, position)
 
-    def get_error(self, node, message, code=None, exception=None):
+    def get_error(
+        self, node, message, code=None, exception=None, alternate_node=None
+    ):
         """Get syntax error exception."""
         return SyntaxCheckerError(
-            "at {}: {}".format(self.find_node_line(node), message),
+            "at {}: {}".format(
+                self.find_node_line(node, alternate_node), message
+            ),
             code,
             exception,
         )
 
-    def get_error_from_code(self, node, code, **msg_kwargs):
+    def get_error_from_code(
+        self, node, code, alternate_node=None, **msg_kwargs
+    ):
         """Get exception from code."""
         if "_exception" in msg_kwargs:
             exception = msg_kwargs.pop("_exception")
@@ -191,7 +205,7 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         msg = super().get_error_from_code(
             code, self._SYNTAX_ERRORS, **msg_kwargs
         )
-        return self.get_error(node, msg, code, exception, **msg_kwargs)
+        return self.get_error(node, msg, code, exception, alternate_node)
 
     def scoped_symbol_lookup(self, name):
         """In-scope Symbol lookup."""

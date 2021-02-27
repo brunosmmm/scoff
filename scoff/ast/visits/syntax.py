@@ -146,50 +146,49 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         """Get current scope depth."""
         return len(self._scope_stack)
 
-    def find_node_line(self, node, alternate_node=None):
-        """Find node location."""
-        try:
-            pos = getattr(node, "_tx_position")
-            return self._find_node_line(node, pos)
-        except AttributeError:
-            if alternate_node is None:
-                return None
-
-        # try alternate node
-        try:
-            pos = getattr(alternate_node, "_tx_position")
-            return self._find_node_line(alternate_node, pos)
-        except AttributeError:
-            return None
-
     @staticmethod
     def find_node_line_in_text(txt, position):
         current_pos = 0
         for idx, line in enumerate(txt.split("\n")):
             if position is None:
                 return None
-            if current_pos + len(line) < position:
-                current_pos += len(line)
+            if current_pos + len(line) + 1 < position:
+                current_pos += len(line) + 1
                 continue
             else:
                 if current_pos != 0:
-                    col = (position - idx) % current_pos
+                    col = (position) % current_pos
                 else:
                     col = 0
                 return (idx + 1, col)
 
-    def _find_node_line(self, node, position):
-        """Find line where node is located."""
-        return self.find_node_line_in_text(self._text, position)
+    def find_node_line(self, node, alternate_node=None):
+        """Find node location."""
+        # FIXME: _tx attributes do not work
+        if (
+            not hasattr(node, "textx_data")
+            and "_tx_position" not in node.textx_data
+        ):
+            if (
+                alternate_node is None
+                or not hasattr(alternate_node, "textx_data")
+                or "_tx_position" not in alternate_node.textx_data
+            ):
+                return None
+            node = alternate_node
+
+        return self.find_node_line_in_text(
+            self._text, node.textx_data["_tx_position"]
+        )
 
     def get_error(
         self, node, message, code=None, exception=None, alternate_node=None
     ):
         """Get syntax error exception."""
+        line, col = find_node_line(node, alternate_node)
+        loc_fmt = f"({line}.{col})"
         return SyntaxCheckerError(
-            "at {}: {}".format(
-                self.find_node_line(node, alternate_node), message
-            ),
+            "at {}: {}".format(loc_fmt, message),
             code,
             exception,
         )

@@ -191,7 +191,7 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         msg = super().get_error_from_code(
             code, self._SYNTAX_ERRORS, **msg_kwargs
         )
-        return self.get_error(node, msg, code, exception)
+        return self.get_error(node, msg, code, exception, **msg_kwargs)
 
     def scoped_symbol_lookup(self, name):
         """In-scope Symbol lookup."""

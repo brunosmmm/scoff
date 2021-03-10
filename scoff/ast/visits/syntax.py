@@ -275,7 +275,7 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         """Return all symbols of type which were recorded."""
         symbols_by_type = {}
         for symbol_name, symbol in self._collected_globals.items():
-            if self.is_of_type(symbol, symbol_type):
+            if isinstance(symbol, symbol_type):
                 symbols_by_type[symbol_name] = symbol
 
         return symbols_by_type

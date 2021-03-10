@@ -179,14 +179,9 @@ class ASTVisitor:
 
         return self._flags[flag_name]
 
-    @staticmethod
-    def is_of_type(node, type_name):
-        """Check class name."""
-        return node.__class__.__name__ == type_name
-
     def get_first_occurrence(self, node, node_type, inclusive=True):
         """Return first occurrence of type."""
-        if self.is_of_type(node, node_type):
+        if isinstance(node, node_type):
             if inclusive:
                 return node
 
@@ -204,7 +199,7 @@ class ASTVisitor:
         for attr_name in node_dict:
             attr = getattr(node, attr_name)
             if self._check_visit_allowed(attr_name):
-                if self.is_of_type(attr, node_type):
+                if isinstance(attr, node_type):
                     return attr
                 if isinstance(attr, list):
                     for obj in attr:
@@ -235,7 +230,7 @@ class ASTVisitor:
         occurrences = []
         for attr_name in node_dict:
             attr = getattr(root, attr_name)
-            if self.is_of_type(attr, node_type):
+            if isinstance(attr, node_type):
                 occurrences.append(attr)
             elif isinstance(attr, (list, tuple)):
                 for obj in attr:

@@ -1,6 +1,7 @@
 """Basic Syntax checker pass."""
 
 from scoff.ast.visits import ASTVisitor, VisitError
+from scoff.ast.visits.scope import ScopeMixin
 from scoff.errors import (
     ErrorCodeException,
     ErrorDescriptor,
@@ -83,6 +84,17 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
             raise
         if flag_run:
             self._pass_run = True
+
+    def _visit_default(self, node):
+        ret = super()._visit_default(node)
+        if isinstance(node, ScopeMixin):
+            self._exit_scope(node)
+        return ret
+
+    def _visit_pre_default(self, node):
+        if isinstance(node, ScopeMixin):
+            self._enter_scope(node)
+        return super()._visit_pre_default(node)
 
     def _enter_scope(self, location):
         if location is not None and location in self._collected_scopes:

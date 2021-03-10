@@ -40,7 +40,6 @@ class ASTCopy(ASTVisitor):
                     }
                 }
             )
-            # class_obj = make_ast_object(node.__class__, None, **empty_members)
             class_obj = copy.deepcopy(node)
             for member in node_dict:
                 if self._check_visit_allowed(member) is False:

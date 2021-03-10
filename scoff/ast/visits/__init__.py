@@ -1,9 +1,12 @@
 """AST Visitors."""
 
 from collections import deque, namedtuple
-from typing import Any, Optional, Callable, List
+from typing import Any, Optional, Callable, List, Type, Union
 from scoff.ast import ScoffASTObject
 from scoff.ast.visits.objects import ScoffVisitObject
+
+# Type aliases
+VisitReturnType = Union[None, ScoffASTObject, List[ScoffASTObject]]
 
 # Visit history object
 VisitHistory = namedtuple("VisitHistory", ["node", "replaces", "depth"])
@@ -179,8 +182,17 @@ class ASTVisitor:
 
         return self._flags[flag_name]
 
-    def get_first_occurrence(self, node, node_type, inclusive=True):
-        """Return first occurrence of type."""
+    def get_first_occurrence(
+        self, node: ScoffASTObject, node_type: Type, inclusive: bool = True
+    ) -> ScoffASTObject:
+        """Return first occurrence of type.
+
+        :param node: Node to inspect
+        :param node_type: Type to search for occurrences
+        :param inclusive: Includes node in search; will return immediately if \
+        node is of type node_type
+        :return: First ocurrence (node) of type
+        """
         if isinstance(node, node_type):
             if inclusive:
                 return node
@@ -214,8 +226,15 @@ class ASTVisitor:
 
         return None
 
-    def get_all_occurrences(self, root, node_type):
-        """Find all nodes of a type."""
+    def get_all_occurrences(
+        self, root: ScoffASTObject, node_type: Type
+    ) -> List[ScoffASTObject]:
+        """Find all nodes of a type.
+
+        :param root: AST root node
+        :param node_type: Type to search for
+        :return: List of nodes of a certain type in AST
+        """
         if isinstance(root, ScoffASTObject):
             node_dict = root.visitable_children_names
         else:
@@ -254,7 +273,7 @@ class ASTVisitor:
         # remove visitation list
         self._visited_nodes = set()
 
-    def _store_visit(self, visit_history):
+    def _store_visit(self, visit_history: ScoffASTObject):
         """Store visit."""
         history_len = self.get_option("history_len")
         if history_len == 0:
@@ -263,15 +282,21 @@ class ASTVisitor:
             self._visit_history.popleft()
         self._visit_history.append(visit_history)
 
-    def _call_visit_hooks(self, cls_name, node):
+    def _call_visit_hooks(self, cls_name: str, node: ScoffASTObject):
         """Call registered hooks."""
         if cls_name not in self._hooks:
             return
         for hook in self._hooks[cls_name]:
             hook(node)
 
-    def _visit_fn_post(self, cls_name, node):
-        """Call corresponding function if present."""
+    def _visit_fn_post(
+        self, cls_name: str, node: ScoffASTObject
+    ) -> VisitReturnType:
+        """Call corresponding function if present.
+
+        This calls the visit function for the node type if it is present in the
+        visitor definition.
+        """
         if cls_name not in self.__visit_fn_table:
             ret = self._visit_default(node)
             self._call_visit_hooks(cls_name, node)
@@ -290,7 +315,14 @@ class ASTVisitor:
         self._call_visit_hooks(cls_name, node)
         return ret
 
-    def _visit_fn_pre(self, cls_name, node):
+    def _visit_fn_pre(
+        self, cls_name: str, node: ScoffASTObject
+    ) -> VisitReturnType:
+        """Call corresponding function if present.
+
+        This calls the pre-visit function for the node type if it is present
+        in the visitor definition.
+        """
         if cls_name not in self.__visit_pre_fn_table:
             return self._visit_pre_default(node)
 
@@ -309,8 +341,15 @@ class ASTVisitor:
 
         return fn(node)
 
-    def visit(self, node, cleanup=True):
-        """Start visting at a certain node."""
+    def visit(
+        self, node: ScoffASTObject, cleanup: bool = True
+    ) -> VisitReturnType:
+        """Start visting at a certain node.
+
+        :param node: Node at which to start visiting
+        :param cleanup: Perform visit cleanup or not
+        :return: Some value related to the visit
+        """
 
         def strip_name(name, prefix):
             return name[len(prefix) :] if name.startswith(prefix) else name
@@ -334,7 +373,8 @@ class ASTVisitor:
             self._cleanup_visit()
         return ret
 
-    def _visit_default(self, node):
+    def _visit_default(self, node: ScoffASTObject) -> VisitReturnType:
+        """Perform default visit if present in visitor definition."""
         if "Default" not in self.__visit_fn_table:
             return node
 
@@ -342,7 +382,8 @@ class ASTVisitor:
 
         return fn(node)
 
-    def _visit_pre_default(self, node):
+    def _visit_pre_default(self, node: ScoffASTObject) -> VisitReturnType:
+        """Perform default pre-visit if present in visitor definition."""
         if "Default" not in self.__visit_pre_fn_table:
             return None
 
@@ -351,10 +392,21 @@ class ASTVisitor:
         return fn(node)
 
     @staticmethod
-    def _check_visit_allowed(*args):
+    def _check_visit_allowed(*args) -> bool:
+        """Check whether visit is allowed.
+
+        True by default, re-implement in subclasses.
+        """
         return True
 
-    def _visit_and_modify(self, node, attr=None):
+    def _visit_and_modify(
+        self, node: ScoffASTObject, attr=None
+    ) -> Union[bool, None]:
+        """Visit a node's attributes and modify if necesary.
+
+        :return: True/False to indicate if attribute is modified or not OR \
+        None in case it is deleted
+        """
         if attr is None:
             to_visit = node
         else:
@@ -376,7 +428,7 @@ class ASTVisitor:
         # not modified
         return False
 
-    def _visit(self, node):
+    def _visit(self, node: ScoffASTObject) -> VisitReturnType:
         """Start visting at a certain node."""
         self._visit_depth += 1
         # call before visiting, cannot modify things
@@ -502,8 +554,16 @@ class ASTVisitor:
         self._visit_depth -= 1
         return ret
 
-    def find_parent_by_type(self, node, parent_type, level=1):
-        """Find nth hierarchical ocurrence of type, upwards."""
+    def find_parent_by_type(
+        self, node: ScoffASTObject, parent_type: Type, level: int = 1
+    ) -> Union[ScoffASTObject, None]:
+        """Find nth hierarchical ocurrence of type, upwards.
+
+        :param node: Node to start search at
+        :param parent_type: Type of node to search for
+        :param level: Current hierarchy level
+        :return: List of objects
+        """
         if not hasattr(node, "parent"):
             return None
         if node.parent is not None:

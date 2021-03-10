@@ -1,5 +1,9 @@
 """Basic Syntax checker pass."""
 
+from collections import deque, OrderedDict
+from typing import Any, Dict, Tuple, Union, Optional, List, Type, Callable
+
+from scoff.ast import ScoffASTObject
 from scoff.ast.visits import ASTVisitor, VisitError
 from scoff.ast.visits.scope import ScopeMixin
 from scoff.errors import (
@@ -7,13 +11,10 @@ from scoff.errors import (
     ErrorDescriptor,
     ErrorGeneratorMixin,
 )
-from collections import deque, OrderedDict
 
 
 class SyntaxCheckerError(ErrorCodeException):
     """Syntax checker error."""
-
-    pass
 
 
 class SyntaxErrorDescriptor(ErrorDescriptor):
@@ -52,7 +53,7 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         ),
     }
 
-    def __init__(self, text: str, *args, **kwargs):
+    def __init__(self, text: str, *args, **kwargs: Any):
         """Initialize.
 
         :param text: The text being parsed; this is used to track error \
@@ -82,8 +83,12 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
             for symbol_name, symbol in symbols.items():
                 self._collect_symbol(symbol_name, symbol)
 
-    def visit(self, node, flag_run=True):
-        """Visit node."""
+    def visit(self, node: ScoffASTObject, flag_run=True):
+        """Visit node.
+
+        :param node: Node to start visiting at
+        :param flag_run: Whether to flag as run after visiting or not
+        """
         try:
             super().visit(node)
         except VisitError as err:
@@ -94,18 +99,24 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         if flag_run:
             self._pass_run = True
 
-    def _visit_default(self, node):
+    def _visit_default(self, node: ScoffASTObject):
+        """Override default visit from base class."""
         ret = super()._visit_default(node)
         if isinstance(node, ScopeMixin):
             self._exit_scope(node)
         return ret
 
-    def _visit_pre_default(self, node):
+    def _visit_pre_default(self, node: ScoffASTObject):
+        """Override default pre-visit from base class."""
         if isinstance(node, ScopeMixin):
             self._enter_scope(node)
         return super()._visit_pre_default(node)
 
-    def _enter_scope(self, location):
+    def _enter_scope(self, location: ScoffASTObject):
+        """Enter scope.
+
+        :param location: Node which represents the scope, location is internal
+        """
         if location is not None and location in self._collected_scopes:
             self._debug_visit(f"RE-ENTERING scope at {location}")
             # entering again
@@ -118,7 +129,11 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
             self._scope_stack.append([location, self._collected_locals])
             self._collected_locals = OrderedDict()
 
-    def _exit_scope(self, location):
+    def _exit_scope(self, location: ScoffASTObject):
+        """Exit scope.
+
+        :param location: Node which represents scope
+        """
         self._debug_visit(
             "exiting scope, depth = {}".format(len(self._scope_stack))
         )
@@ -129,7 +144,20 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         else:
             enter_loc, self._collected_locals = self._scope_stack.pop()
 
-    def _collect_symbol(self, name, node, globl=False, ignore_redefine=False):
+    def _collect_symbol(
+        self,
+        name: str,
+        node: ScoffASTObject,
+        globl: bool = False,
+        ignore_redefine: bool = False,
+    ):
+        """Add symbol to symbol table.
+
+        :param name: Symbol name
+        :param node: The symbol
+        :param globl: Whether this is a global name
+        :param ignore_redefine: Ignore re-defines or raise error
+        """
         # verify if identifier is valid
         if not self.is_valid_identifier(name):
             raise self.get_error_from_code(
@@ -153,8 +181,14 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
             if name not in self._collected_locals:
                 self._collected_locals[name] = node
 
-    def get_node_scope(self, node):
-        """Get scope in which this node is declared."""
+    def get_node_scope(
+        self, node: ScoffASTObject
+    ) -> Dict[str, ScoffASTObject]:
+        """Get scope in which this node is declared.
+
+        :param node: An AST node
+        :return: Symbol table for node scope
+        """
         for location, (end_loc, scope) in self._collected_scopes.items():
             for symbol_name, symbol in scope.items():
                 if symbol == node:
@@ -163,12 +197,23 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
             if symbol == node:
                 return scope
 
-    def get_current_scope_depth(self):
-        """Get current scope depth."""
+    def get_current_scope_depth(self) -> int:
+        """Get current scope depth.
+
+        :return: Current scope depth
+        """
         return len(self._scope_stack)
 
     @staticmethod
-    def find_node_line_in_text(txt, position):
+    def find_node_line_in_text(
+        txt: str, position: int
+    ) -> Union[None, Tuple[int, int]]:
+        """Find node location in text.
+
+        :param txt: Source text
+        :param location: Character location in text
+        :return: (line, col) location of node or None
+        """
         current_pos = 0
         for idx, line in enumerate(txt.split("\n")):
             if position is None:
@@ -183,8 +228,18 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
                     col = 0
                 return (idx + 1, col)
 
-    def find_node_line(self, node, alternate_node=None):
-        """Find node location."""
+    def find_node_line(
+        self,
+        node: ScoffASTObject,
+        alternate_node: Optional[ScoffASTObject] = None,
+    ) -> Union[None, Tuple[int, int]]:
+        """Find node location in text.
+
+        :param node: An AST node
+        :param alternate_node: An optional alternate node related to the node.\
+        This will be used in case the original node's location is not found
+        :return: Location in text
+        """
         # FIXME: _tx attributes do not work
         if (
             not hasattr(node, "textx_data")
@@ -203,10 +258,24 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         )
 
     def get_error(
-        self, node, message, code=None, exception=None, alternate_node=None
-    ):
-        """Get syntax error exception."""
-        line, col = find_node_line(node, alternate_node)
+        self,
+        node: ScoffASTObject,
+        message: str,
+        code: Optional[Union[str, int]] = None,
+        exception: Optional[Exception] = None,
+        alternate_node: Optional[ScoffASTObject] = None,
+    ) -> SyntaxCheckerError:
+        """Get syntax error exception.
+
+        :param node: An AST node to use as the location
+        :param message: The error message
+        :param code: The error code
+        :param exception: The error exception
+        :param alternate_node: An alternate node to be used as location in \
+        case the original cannot be located
+        :return: A syntax error exception
+        """
+        line, col = self.find_node_line(node, alternate_node)
         loc_fmt = f"({line}.{col})"
         return SyntaxCheckerError(
             "at {}: {}".format(loc_fmt, message),
@@ -215,9 +284,20 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         )
 
     def get_error_from_code(
-        self, node, code, alternate_node=None, **msg_kwargs
-    ):
-        """Get exception from code."""
+        self,
+        node: ScoffASTObject,
+        code: Union[str, int],
+        alternate_node: Optional[ScoffASTObject] = None,
+        **msg_kwargs: str,
+    ) -> SyntaxCheckerError:
+        """Get exception from code.
+
+        :param node: An AST object
+        :param code: The error code
+        :param alternate_node: Alternate node to use as location in case the \
+        original cannot be located
+        :return: A syntax error exception
+        """
         if "_exception" in msg_kwargs:
             exception = msg_kwargs.pop("_exception")
         else:
@@ -227,8 +307,12 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         )
         return self.get_error(node, msg, code, exception, alternate_node)
 
-    def scoped_symbol_lookup(self, name):
-        """In-scope Symbol lookup."""
+    def scoped_symbol_lookup(self, name: str) -> Union[ScoffASTObject, None]:
+        """In-scope Symbol lookup.
+
+        :param name: Name to lookup
+        :return: Symbols
+        """
         # locals first
         if name in self._collected_locals:
             return self._collected_locals[name]
@@ -240,8 +324,14 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
 
         return None
 
-    def _symbol_lookup(self, name):
-        """Overall symbol lookup."""
+    # FIXME: the return value of this always causes me a ton of headache
+    def _symbol_lookup(
+        self, name: str
+    ) -> List[Tuple[ScoffASTObject, Dict[str, ScoffASTObject]]]:
+        """Overall symbol lookup.
+
+        This looks up symbols in all nested scopes upwards.
+        """
         ret = []
         if name in self._collected_globals:
             ret.append(
@@ -254,12 +344,22 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
 
         return ret
 
-    def symbol_lookup(self, name):
-        """Overall symbol lookup."""
-        return [symbol for symbol, scope in self._symbol_lookup(name)]
+    def symbol_lookup(self, name: str) -> List[ScoffASTObject]:
+        """Overall symbol lookup.
 
-    def report_symbols(self):
-        """Report all symbols collected."""
+        This will look up symbols in all nested scopes upwards in the scope\
+         hierarchy.
+
+        :param name: Symbol name
+        :return: Symbols
+        """
+        return [symbol for symbol, _ in self._symbol_lookup(name)]
+
+    def report_symbols(self) -> Dict[str, Dict[str, ScoffASTObject]]:
+        """Report all symbols collected.
+
+        :return: Dictionary of symbols per scope
+        """
         ret = {"globals": {}}
         for symbol_name, symbol in self._collected_globals.items():
             ret["globals"][symbol_name] = symbol
@@ -271,8 +371,14 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
 
         return ret
 
-    def get_global_symbols_by_type(self, symbol_type):
-        """Return all symbols of type which were recorded."""
+    def get_global_symbols_by_type(
+        self, symbol_type: Type
+    ) -> Dict[str, ScoffASTObject]:
+        """Return all symbols of type which were recorded.
+
+        :param symbol_type: The symbol type
+        :return: Dictionary with all symbols found
+        """
         symbols_by_type = {}
         for symbol_name, symbol in self._collected_globals.items():
             if isinstance(symbol, symbol_type):
@@ -285,8 +391,12 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         self._collected_scopes = OrderedDict()
 
     @classmethod
-    def is_valid_identifier(cls, identifier):
-        """Determine if identifier is valid."""
+    def is_valid_identifier(cls, identifier: str) -> bool:
+        """Determine if identifier is valid.
+
+        :param identifier: String identifier for object
+        :return: Whether the identifier is valid
+        """
         if not hasattr(cls, "IDENTIFIER_REGEX"):
             # just return true, we accept all
             return True
@@ -294,8 +404,15 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         return bool(m is not None)
 
 
-def enter_scope(fn):
-    """Enter scope."""
+# Typing aliases
+NodeVisitorFunction = Callable[SyntaxChecker, ScoffASTObject]
+
+
+def enter_scope(fn: NodeVisitorFunction) -> Callable:
+    """Enter scope.
+
+    Signal to the syntax checker that a scope is entered in this node.
+    """
 
     def wrapper(chk, node):
         chk._enter_scope(node)
@@ -304,8 +421,14 @@ def enter_scope(fn):
     return wrapper
 
 
-def enter_scope_after(fn):
-    """Enter scope after."""
+def enter_scope_after(fn: NodeVisitorFunction) -> Callable:
+    """Enter scope after.
+
+    Signal to the syntax checker that a scope is entered AFTER visiting this \
+    node.
+    :param fn: Node visitor function
+    :return: Decorated function
+    """
 
     def wrapper(chk, node):
         ret = fn(chk, node)
@@ -315,8 +438,14 @@ def enter_scope_after(fn):
     return wrapper
 
 
-def exit_scope(fn):
-    """Exit scope."""
+def exit_scope(fn: NodeVisitorFunction) -> Callable:
+    """Exit scope.
+
+    Signal to the syntax checker that the current scope is exited when \
+    visiting this node.
+    :param fn: Node visitor function
+    :return: Decorated function
+    """
 
     def wrapper(chk, node):
         chk._exit_scope(node)
@@ -325,38 +454,38 @@ def exit_scope(fn):
     return wrapper
 
 
-def exit_scope_after(fn):
-    """Exit scope after."""
+def exit_scope_after(fn: NodeVisitorFunction) -> Callable:
+    """Exit scope after.
+
+    Signal to the syntax checker that the current scope is exited AFTER \
+    visiting this node.
+    :param fn: Node visitor function
+    :return: Decorated function
+    """
 
     def wrapper(chk, node):
         ret = fn(chk, node)
         chk._exit_scope(node)
         return ret
-
-    return wrapper
-
-
-def auto_collect(fn, node_field):
-    """Automatically collect symbol."""
-
-    def wrapper(chk, node):
-        if not hasattr(node, node_field):
-            raise RuntimeError(
-                "invalid attribute for node: {}".format(node_field)
-            )
-        chk._collect_symbol(getattr(node, node_field), node)
 
     return wrapper
 
 
 class AutoCollect:
-    """Automatically collect symbol."""
+    """Automatically collect symbol.
 
-    def __init__(self, node_field):
-        """Initialize."""
+    collects the current node as symbol, using the node_field as the field \
+    from which the symbol's name is sourced.
+    """
+
+    def __init__(self, node_field: str):
+        """Initialize.
+
+        :param node_field: Attribute name to source symbol name from
+        """
         self._field = node_field
 
-    def __call__(self, fn):
+    def __call__(self, fn: NodeVisitorFunction):
         """Call."""
 
         def wrapper(chk, node):
@@ -371,14 +500,22 @@ class AutoCollect:
 
 
 class AutoCollectConditional:
-    """Automatically collect symbol depending on flag state."""
+    """Automatically collect symbol depending on flag state.
 
-    def __init__(self, node_field, chk_flag):
-        """Initialize."""
+    collects the current node as symbol, using the node_field as the field \
+    from which the symbol's name is sourced, dependin on a condition
+    """
+
+    def __init__(self, node_field: str, chk_flag: str):
+        """Initialize.
+
+        :param node_field: Attribute name to source symbol name from
+        :param chk_flag: Flag to check on visitor
+        """
         self._field = node_field
         self._flag = chk_flag
 
-    def __call__(self, fn):
+    def __call__(self, fn: NodeVisitorFunction):
         """Call."""
 
         def wrapper(chk, node):

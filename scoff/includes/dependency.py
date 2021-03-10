@@ -1,5 +1,6 @@
 """Parse dependencies in designs."""
 
+from typing import Optional, List
 from scoff.includes import (
     IncludeManagerMixin,
     IncludeAlreadyVisitedError,
@@ -17,8 +18,14 @@ class DependencyFinder(IncludeManagerMixin):
 
     _DEPENDENCY_REGEX = None
 
-    def __init__(self, file_path, include_paths=None):
-        """Initialize."""
+    def __init__(
+        self, file_path: str, include_paths: Optional[List[str]] = None
+    ):
+        """Initialize.
+
+        :param file_path: Path to file
+        :param include_paths: Optional include paths to search
+        """
         super().__init__()
         self._main = file_path
         if include_paths is None:
@@ -26,15 +33,17 @@ class DependencyFinder(IncludeManagerMixin):
         self._include_paths = include_paths
         self._depends_on = set()
 
-    def find_dependencies(self, depth=-1):
-        """Find and build dependency map."""
-        try:
-            ret = self._find_dependencies(self._main, depth)
-            return ret
-        except Exception as ex:
-            raise
+    def find_dependencies(self, depth: int = -1):
+        """Find and build dependency map.
 
-    def _find_dependencies(self, filepath, depth=-1):
+        :param depth: Maximum depth to search dependencies
+        :return: List of files which are dependencies
+        """
+        ret = self._find_dependencies(self._main, depth)
+        return ret
+
+    def _find_dependencies(self, filepath: str, depth: int = -1):
+        """Actually find the dependencies."""
         with open(filepath, "r") as f:
             main_txt = f.readlines()
 

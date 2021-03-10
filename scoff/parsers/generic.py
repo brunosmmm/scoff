@@ -2,7 +2,7 @@
 
 import re
 from collections import deque
-from typing import Union, Any, List, Deque, Tuple, Dict
+from typing import Union, Any, List, Deque, Tuple, Dict, Callable
 from scoff.parsers.linematch import MatcherError, LineMatcher
 
 EMPTY_LINE = re.compile(b"\s*$")
@@ -13,7 +13,10 @@ class ParserError(Exception):
 
 
 class DataParser:
-    """Simple data parser."""
+    """Simple data parser.
+
+    Tokens are regular expression-based
+    """
 
     def __init__(
         self,
@@ -23,12 +26,8 @@ class DataParser:
     ):
         """Initialize.
 
-        Arguments
-        ---------
-        initial_state
-          Initial state of the parser
-        consume_spaces
-          Consume stray space characters
+        :param initial_state: Initial state of the parser
+        :param consume_spaces: Consume stray space characters
         """
         self._state_hooks = {}
         super().__init__(**kwargs)
@@ -45,8 +44,14 @@ class DataParser:
         """Get current state."""
         return self._state
 
-    def add_state_hook(self, state, hook):
-        """Add state hook."""
+    def add_state_hook(self, state: Union[str, int], hook: Callable):
+        """Add state hook (callback).
+
+        A callback will be called when the parser reaches a specified state.
+
+        :param state: The parser state to add a callback to
+        :param hook: The callback to be added
+        """
         if not callable(hook):
             raise TypeError("hook must be callable")
         if state not in self.states:
@@ -143,10 +148,7 @@ class DataParser:
     def parse(self, data: str) -> int:
         """Parse data.
 
-        Arguments
-        ---------
-        data
-          Textual data to be parsed
+        :param data: Textual data to be parsed
         """
         self._data = data.encode()
         self._current_position = 1

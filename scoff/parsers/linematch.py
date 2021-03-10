@@ -10,7 +10,10 @@ class MatcherError(Exception):
 
 
 class LineMatcher:
-    """Line matcher."""
+    """Line matcher parser.
+
+    Tries to match an entire line defined by token compositions.
+    """
 
     def __init__(
         self,
@@ -18,7 +21,12 @@ class LineMatcher:
         gobble: bool = True,
         **kwargs: Any
     ):
-        """Initialize."""
+        """Initialize.
+
+        :param tokens: List of tokens which compose the line
+        :param gobble: Whether to consume whitespace or not
+        :param kwargs: Other generic keyword arguments
+        """
         self._tokens = []
         for token in tokens:
             if not isinstance(token, (str, bytes, SimpleToken)):
@@ -51,7 +59,13 @@ class LineMatcher:
     def parse_first(
         self, text: bytes, position: int
     ) -> Tuple[int, Dict[str, str]]:
-        """Try to parse first occurrence."""
+        """Try to parse first occurrence.
+
+        :param text: Textual data to be parsed
+        :param position: Position in text to start parsing at
+        :return: A tuple containing the number of characters consumed and \
+        a dictionary containing the tokens parsed by field name
+        """
         match = self._pattern.match(text, position)
         if match is None:
             raise MatcherError("failed to parse.")
@@ -73,7 +87,11 @@ class LineMatcher:
         )
 
     def parse(self, line: str) -> Dict[str, str]:
-        """Parse a line."""
+        """Parse a line.
+
+        :param line: Line of text to be parsed
+        :return: Dictionary containing parsed tokens with field names
+        """
         match = self._pattern.match(line)
         if match is None:
             raise MatcherError("failed to parse line.")

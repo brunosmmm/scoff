@@ -27,4 +27,4 @@ def parse_file(filename: str, grammar_file: str) -> Tuple[str, str]:
     text = "".join(f.readlines())
     f.close()
 
-    return _parse_text(text, grammar_file)
+    return parse_text(text, grammar_file)

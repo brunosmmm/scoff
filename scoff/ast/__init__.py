@@ -13,17 +13,22 @@ class ScoffASTObject:
         "_visitable_children_names",
         "_non_visitable_children_names",
         "_initialized",
+        "_root",
         "_textx_data",
     )
 
-    def __init__(self, **kwargs):
+    # NOTE: textx is setting things as a class variable!!!!
+    _cls_textx_data = {}
+
+    def __init__(self, root_node=False, **kwargs):
         """Initialize."""
         self._initialized = False
         self._non_visitable_children_names = []
         self._visitable_children_names = []
         self._parent = None
+        self._root = root_node
         self._parent_key = None
-        self._textx_data = {}
+        self._textx_data = copy.copy(self._cls_textx_data)
         self.SCOFF_META = {}
         if "SCOFF_META" in kwargs:
             self.SCOFF_META = kwargs.pop("SCOFF_META")
@@ -68,14 +73,16 @@ class ScoffASTObject:
                             pass
                 del old_obj
         if name.startswith("_tx"):
-            # how is this even possible?
+            # HACK
             if not hasattr(self, "_textx_data"):
-                self._textx_data = {}
-            self._textx_data[name] = value
+                self._cls_textx_data[name] = value
+            else:
+                self._textx_data[name] = value
             return
         super().__setattr__(name, value)
 
     def __getattr__(self, name):
+        # FIXME this does not work
         if name.startswith("_tx"):
             if name in self._textx_data:
                 return self._textx_data[name]
@@ -92,11 +99,17 @@ class ScoffASTObject:
     @property
     def parent(self):
         """Get parent."""
+        if self._root:
+            # emulate textx expected behavior
+            raise AttributeError()
         return self._parent
 
     @parent.setter
     def parent(self, value):
         """Set parent."""
+        # self._textx_data.parent = value
+        if self._root:
+            return
         self._parent = value
 
     @property
@@ -113,6 +126,11 @@ class ScoffASTObject:
     def nonvisitable_children_names(self):
         """Get names of children that are not visitable."""
         return self._non_visitable_children_names
+
+    @property
+    def textx_data(self):
+        """Get textx data proxy object."""
+        return self._textx_data
 
     def _remove_backreferences(self):
         # print("__del__ called on {}".format(self.__class__.__name__))

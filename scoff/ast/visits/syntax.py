@@ -158,43 +158,56 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         """Get current scope depth."""
         return len(self._scope_stack)
 
-    def find_node_line(self, node):
-        """Find node location."""
-        try:
-            pos = getattr(node, "_tx_position")
-        except AttributeError:
-            return None
-        return self._find_node_line(node, pos)
-
     @staticmethod
     def find_node_line_in_text(txt, position):
         current_pos = 0
         for idx, line in enumerate(txt.split("\n")):
             if position is None:
                 return None
-            if current_pos + len(line) < position:
-                current_pos += len(line)
+            if current_pos + len(line) + 1 < position:
+                current_pos += len(line) + 1
                 continue
             else:
                 if current_pos != 0:
-                    col = (position - idx) % current_pos
+                    col = (position) % current_pos
                 else:
                     col = 0
                 return (idx + 1, col)
 
-    def _find_node_line(self, node, position):
-        """Find line where node is located."""
-        return self.find_node_line_in_text(self._text, position)
+    def find_node_line(self, node, alternate_node=None):
+        """Find node location."""
+        # FIXME: _tx attributes do not work
+        if (
+            not hasattr(node, "textx_data")
+            and "_tx_position" not in node.textx_data
+        ):
+            if (
+                alternate_node is None
+                or not hasattr(alternate_node, "textx_data")
+                or "_tx_position" not in alternate_node.textx_data
+            ):
+                return None
+            node = alternate_node
 
-    def get_error(self, node, message, code=None, exception=None):
+        return self.find_node_line_in_text(
+            self._text, node.textx_data["_tx_position"]
+        )
+
+    def get_error(
+        self, node, message, code=None, exception=None, alternate_node=None
+    ):
         """Get syntax error exception."""
+        line, col = find_node_line(node, alternate_node)
+        loc_fmt = f"({line}.{col})"
         return SyntaxCheckerError(
-            "at {}: {}".format(self.find_node_line(node), message),
+            "at {}: {}".format(loc_fmt, message),
             code,
             exception,
         )
 
-    def get_error_from_code(self, node, code, **msg_kwargs):
+    def get_error_from_code(
+        self, node, code, alternate_node=None, **msg_kwargs
+    ):
         """Get exception from code."""
         if "_exception" in msg_kwargs:
             exception = msg_kwargs.pop("_exception")
@@ -203,7 +216,7 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         msg = super().get_error_from_code(
             code, self._SYNTAX_ERRORS, **msg_kwargs
         )
-        return self.get_error(node, msg, code, exception)
+        return self.get_error(node, msg, code, exception, alternate_node)
 
     def scoped_symbol_lookup(self, name):
         """In-scope Symbol lookup."""

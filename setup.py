@@ -7,7 +7,7 @@ setup(
     version="0.2",
     packages=find_packages(),
     package_dir={"": "."},
-    install_requires=[],
+    install_requires=["textx==2.3"],
     author="Bruno Morais",
     author_email="brunosmmm@gmail.com",
     description="Simple COmpiler Framework",

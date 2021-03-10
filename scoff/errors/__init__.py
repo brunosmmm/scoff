@@ -1,6 +1,9 @@
 """Error generation."""
 
-from typing import Any, Union
+from typing import Union, Optional, Callable, Type, Dict
+from scoff.ast import ScoffASTObject
+
+ExceptionCodeType = Union[str, int]
 
 
 class ErrorCodeException(Exception):
@@ -8,18 +11,24 @@ class ErrorCodeException(Exception):
 
     def __init__(
         self,
-        message,
-        code: Union[None, str, int] = None,
-        exception=None,
-        alternate_node=None,
+        message: str,
+        code: Optional[ExceptionCodeType] = None,
+        exception: Optional[Exception] = None,
+        alternate_node: Optional[ScoffASTObject] = None,
     ):
-        """Initialize."""
+        """Initialize.
+
+        :param msg: The error message
+        :param code: The error code
+        :param exception: An embedded exception associated to the error
+        :param alternate_node: An alternate AST node associated to the error
+        """
         self.msg = message
         self.code = code
         self.exception = exception
 
     def __repr__(self):
-        """Representation."""
+        """Get representation."""
         if self.code is not None:
             err_code = "(#{})".format(self.code)
         else:
@@ -35,9 +44,22 @@ class ErrorDescriptor:
     """Error descriptor."""
 
     def __init__(
-        self, error_code, brief, fmt_str, exception_class, debug_callback=None
+        self,
+        error_code: ExceptionCodeType,
+        brief: str,
+        fmt_str: str,
+        exception_class: Type,
+        debug_callback: Optional[Callable] = None,
     ):
-        """Initialize."""
+        """Initialize.
+
+        :param error_code: The error code
+        :param brief: A brief description of the error
+        :param fmt_str: A complete description of the error, including format \
+        string pieces for templating the error message
+        :param exception_class: Class of the exception for the error
+        :param debug_callback: Optional callback to be called when error occurs
+        """
         if not issubclass(exception_class, ErrorCodeException):
             raise TypeError(
                 'argument "exception_class" must be an instance '
@@ -53,12 +75,20 @@ class ErrorDescriptor:
                 raise TypeError("debug_callback must be a callable")
         self._debug_callback = debug_callback
 
-    def get_message(self, **msg_kwargs):
-        """Get error message."""
+    def get_message(self, **msg_kwargs: str):
+        """Get error message.
+
+        :param msg_kwargs: Values for formatting of the error message
+        :return: Formatted error message
+        """
         return self.fmt_str.format(**msg_kwargs)
 
-    def get_exception(self, **msg_kwargs):
-        """Get Exception."""
+    def get_exception(self, **msg_kwargs: str):
+        """Get Exception.
+
+        :param msg_kwargs: Values for formatting of the error message
+        :return: Exception object
+        """
         err_msg = self.get_message(**msg_kwargs)
         return self.ex_class(err_msg, self.code)
 
@@ -68,8 +98,11 @@ class ErrorDescriptor:
         return self._debug_callback
 
     @debug_cb.setter
-    def debug_cb(self, debug_callback):
-        """Set debug callback."""
+    def debug_cb(self, debug_callback: Callable):
+        """Set debug callback.
+
+        :param debug_callback: The callback
+        """
         if not callable(debug_callback):
             raise TypeError("debug_callback must be a callable")
         self._debug_callback = debug_callback
@@ -79,8 +112,18 @@ class ErrorGeneratorMixin:
     """Error generator Mixin."""
 
     @staticmethod
-    def get_error_from_code(code, errors, **msg_kwargs):
-        """Get error from code."""
+    def get_error_from_code(
+        code: ExceptionCodeType,
+        errors: Dict[ExceptionCodeType, ErrorDescriptor],
+        **msg_kwargs: str
+    ):
+        """Get error from code.
+
+        :param code: Error code
+        :param errors: Dictionary containing possible errors
+        :param msg_kwargs: Values for error message templating
+        :return: Formatted error message
+        """
         if code not in errors:
             raise KeyError("unknown error code: {}".format(code))
 

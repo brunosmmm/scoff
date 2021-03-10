@@ -1,10 +1,14 @@
 """Code generator."""
 
-from typing import Dict, Type, Any
+from typing import Dict, Type, Any, Callable
 
 
-def indent(fn):
-    """Indent decorator."""
+def indent(fn: Callable) -> Callable:
+    """Indent decorator.
+
+    Adds indentation to generated code
+    :param fn: Code generation function
+    """
 
     def wrapper(*args, **kwargs):
         if not isinstance(args[0], CodeGenerator):
@@ -36,7 +40,11 @@ class CodeGenerator:
     class_aliases: Dict[str, Type] = {}
 
     def __init__(self, indent: bool = False, indent_str: str = "    "):
-        """Initialize."""
+        """Initialize.
+
+        :param indent: Whether to indent code or node
+        :param indent_str: Indentation string
+        """
         self.indent_level = 0
         self.indent = indent
         self.indent_str = indent_str
@@ -54,11 +62,16 @@ class CodeGenerator:
         """Add class alias."""
         self.class_aliases[alias_class] = use_as
 
-    def _check_validity(self, element):
+    def _check_validity(self, element: Any) -> bool:
         return True
 
-    def dump_element(self, element: Any, **kwargs: Any):
-        """Get code representation for an element."""
+    def dump_element(self, element: Any, **kwargs: Any) -> str:
+        """Get code representation for an element.
+
+        :param element: Element to be dumped
+        :param kwargs: Additional flags
+        :return: Generated code
+        """
         cls_name = element.__class__.__name__
         gen_method_name = "gen_{}".format(cls_name)
 
@@ -93,10 +106,10 @@ class CodeGenerator:
 
     # builtin types
 
-    def gen_int(self, element: int, **kwargs: Any):
-        """Integer."""
+    def gen_int(self, element: int, **kwargs: Any) -> str:
+        """Generate integer."""
         return str(element)
 
-    def get_str(self, element: str, **kwargs: Any):
-        """String."""
+    def get_str(self, element: str, **kwargs: Any) -> str:
+        """Generate string."""
         return element

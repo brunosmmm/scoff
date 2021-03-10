@@ -2,10 +2,16 @@
 
 
 class SetFlag:
-    """Set flag on visit."""
+    """Set flag on visit.
 
-    def __init__(self, flag_name):
-        """Initialize."""
+    Will set a flag on the current visitor before visiting.
+    """
+
+    def __init__(self, flag_name: str):
+        """Initialize.
+
+        :param flag_name: Flag name
+        """
         self._flag = flag_name
 
     def __call__(self, fn):
@@ -19,10 +25,16 @@ class SetFlag:
 
 
 class SetFlagAfter:
-    """Set flag on visit."""
+    """Set flag on visit.
 
-    def __init__(self, flag_name):
-        """Initialize."""
+    Will set a flag on the current visitor after visiting.
+    """
+
+    def __init__(self, flag_name: str):
+        """Initialize.
+
+        :param flag_name: Flag name
+        """
         self._flag = flag_name
 
     def __call__(self, fn):
@@ -37,10 +49,16 @@ class SetFlagAfter:
 
 
 class ClearFlag:
-    """Clear flag on visit."""
+    """Clear flag on visit.
 
-    def __init__(self, flag_name):
-        """Initialize."""
+    Flag will be cleared on the visitor before visiting the node.
+    """
+
+    def __init__(self, flag_name: str):
+        """Initialize.
+
+        :param flag_name: Flag name
+        """
         self._flag = flag_name
 
     def __call__(self, fn):
@@ -54,10 +72,16 @@ class ClearFlag:
 
 
 class ClearFlagAfter:
-    """Clear flag on visit."""
+    """Clear flag on visit.
 
-    def __init__(self, flag_name):
-        """Initialize."""
+    Flag will be cleared on the visitor after visiting the node.
+    """
+
+    def __init__(self, flag_name: str):
+        """Initialize.
+
+        :param flag_name: Flag name
+        """
         self._flag = flag_name
 
     def __call__(self, fn):
@@ -72,10 +96,17 @@ class ClearFlagAfter:
 
 
 class ConditionalVisit:
-    """Conditional visit."""
+    """Conditional visit.
 
-    def __init__(self, flag_name, inverted=False):
-        """Initialize."""
+    Only starts visiting the node if some condition is met, otherwise skips.
+    """
+
+    def __init__(self, flag_name: str, inverted: bool = False):
+        """Initialize.
+
+        :param flag_name: Flag name to check
+        :param inverted: Whether to invert the boolean value of the condition
+        """
         self._flag = flag_name
         self._inverted = inverted
 
@@ -97,7 +128,10 @@ class ConditionalVisit:
 
 
 def trace_visit(fn):
-    """Trace visit."""
+    """Trace visit.
+
+    Prints tracing information when visiting a node.
+    """
 
     def wrapper(tree, *args):
         tree._debug_visit(
@@ -111,7 +145,10 @@ def trace_visit(fn):
 
 
 def stop_visiting(fn):
-    """No further visits."""
+    """Disable further visits.
+
+    Disable all visits after done visiting the current node.
+    """
 
     def wrapper(tree, *args):
         ret = fn(tree, *args)
@@ -122,7 +159,10 @@ def stop_visiting(fn):
 
 
 def no_child_visits(fn):
-    """No children visits."""
+    """Disable children visits.
+
+    Disable visiting of the current children nodes.
+    """
 
     def wrapper(tree, *args):
         ret = fn(tree, *args)
@@ -133,7 +173,12 @@ def no_child_visits(fn):
 
 
 def reverse_visit_order(fn):
-    """Reverse visit order."""
+    """Reverse visit order.
+
+    Visits are performed on node's children on an ordered fashion (order is \
+    set during AST object creation). Visit this node's children in reverse \
+    order
+    """
 
     def wrapper(tree, *args):
         ret = fn(tree, *args)

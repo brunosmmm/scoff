@@ -60,8 +60,9 @@ class DependencyFinder(IncludeManagerMixin):
                             depth -= 1
                         self._find_dependencies(file_location, depth)
                 except IncludeAlreadyVisitedError:
+                    # ignore file
                     pass
-                except Exception as ex:
-                    raise DependencyFinderError("failed to inspect")
+                except OSError as ex:
+                    raise DependencyFinderError(f"failed to inspect: {ex}")
 
         return self._depends_on

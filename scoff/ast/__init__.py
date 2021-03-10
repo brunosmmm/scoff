@@ -1,6 +1,7 @@
 """Abstract syntax tree."""
 
 import copy
+from typing import Union, Optional
 
 
 class ScoffASTObject:
@@ -20,8 +21,12 @@ class ScoffASTObject:
     # NOTE: textx is setting things as a class variable!!!!
     _cls_textx_data = {}
 
-    def __init__(self, root_node=False, **kwargs):
-        """Initialize."""
+    def __init__(self, root_node: bool = False, **kwargs):
+        """Initialize.
+
+        :param root_node: Whether this is the root node or not
+        :param kwargs: Any other attributes to be added to the node
+        """
         self._initialized = False
         self._non_visitable_children_names = []
         self._visitable_children_names = []
@@ -51,6 +56,10 @@ class ScoffASTObject:
         self._initialized = True
 
     def __setattr__(self, name, value):
+        """Set an attribute of the AST object.
+
+        This will treat special attributes accordingly and try to set them.
+        """
         if hasattr(self, "_initialized") and self._initialized:
             if name in self._visitable_children_names:
                 if isinstance(value, ScoffASTObject):
@@ -73,7 +82,7 @@ class ScoffASTObject:
                             pass
                 del old_obj
         if name.startswith("_tx"):
-            # HACK
+            # HACK: set textX attributes
             if not hasattr(self, "_textx_data"):
                 self._cls_textx_data[name] = value
             else:
@@ -105,7 +114,7 @@ class ScoffASTObject:
         return self._parent
 
     @parent.setter
-    def parent(self, value):
+    def parent(self, value: Union[__class__, None]):
         """Set parent."""
         # self._textx_data.parent = value
         if self._root:
@@ -182,13 +191,10 @@ class ScoffASTObject:
                         _value.parent = ret
         return ret
 
-    def copy(self, parent=None):
+    def copy(self, parent: Optional[__class__] = None):
         """Get a copy.
 
-        Arguments
-        ---------
-        parent
-          A node to set as parent after copying
+        :param parent: A node to set as parent after copying
         """
         ret = copy.deepcopy(self)
         ret.parent = parent

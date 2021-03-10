@@ -20,7 +20,10 @@ class SyntaxErrorDescriptor(ErrorDescriptor):
     """Error descriptor."""
 
     def __init__(self, *args):
-        """Initialize."""
+        """Initialize.
+
+        :param args: Any other ErrorDescriptor arguments
+        """
         super().__init__(*args, exception_class=SyntaxCheckerError)
 
 
@@ -49,8 +52,14 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         ),
     }
 
-    def __init__(self, text, *args, **kwargs):
-        """Initialize."""
+    def __init__(self, text: str, *args, **kwargs):
+        """Initialize.
+
+        :param text: The text being parsed; this is used to track error \
+        locations
+        :param args: Any other visitor arguments
+        :param kwargs: Any other visitor keyword arguments
+        """
         super().__init__(*args, **kwargs)
         self._text = text
         self._SYNTAX_ERRORS.update(self.__SYNTAX_ERRORS)

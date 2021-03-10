@@ -149,6 +149,7 @@ class DataParser:
         """Parse data.
 
         :param data: Textual data to be parsed
+        :return: Current position in data
         """
         self._data = data.encode()
         self._current_position = 1

@@ -1,6 +1,7 @@
 """AST Visitors."""
 
 from collections import deque, namedtuple
+from typing import Any, Optional, Callable, List
 from scoff.ast import ScoffASTObject
 from scoff.ast.visits.objects import ScoffVisitObject
 
@@ -15,13 +16,16 @@ class NoChildrenVisits(Exception):
 class VisitError(Exception):
     """Exception while visiting."""
 
-    def __init__(self, original_exception=None):
-        """Initialize."""
+    def __init__(self, original_exception: Optional[Exception] = None):
+        """Initialize.
+
+        :param original_exception: An embedded exception
+        """
         super().__init__()
         self.ex = original_exception
 
-    def find_embedded_exception(self):
-        """Find an exception that is not VisitError."""
+    def find_embedded_exception(self) -> Exception:
+        """Find an embedded exception that is not a VisitError."""
         # there might be several VisitErrors inside each other
         if isinstance(self.ex, VisitError):
             return self.ex.find_embedded_exception()
@@ -33,8 +37,11 @@ class VisitError(Exception):
 class ASTVisitor:
     """Visits an AST."""
 
-    def __init__(self, **options):
-        """Initialize."""
+    def __init__(self, **options: Any):
+        """Initialize.
+
+        :param options: Dictionary of options (flags)
+        """
         super().__init__()
         self._visiting = False
         self._dont_visit = False
@@ -84,8 +91,14 @@ class ASTVisitor:
         """Reset visit record."""
         self._visited_nodes = set()
 
-    def add_visit_hook(self, node_cls_name, method):
-        """Add external hook to call when a certain class is visited."""
+    def add_visit_hook(
+        self, node_cls_name: str, method: Callable[ScoffASTObject]
+    ):
+        """Add external hook to call when a certain class is visited.
+
+        :param node_cls_name: Class name
+        :param method: Callable to be called
+        """
         if node_cls_name not in self._hooks:
             self._hooks[node_cls_name] = set()
 
@@ -103,38 +116,64 @@ class ASTVisitor:
         """Don't visit children of this node."""
         self.set_flag("no_children_visits")
 
-    def has_been_visited(self, node):
-        """Check if a node has been visited before."""
+    def has_been_visited(self, node: ScoffASTObject) -> bool:
+        """Check if a node has been visited before.
+
+        :param node: Node to check if visited or not
+        :return: Whether visited or not
+        """
         return node in self._visited_nodes
 
-    def get_last_visited(self):
-        """Get last visited node."""
+    def get_last_visited(self) -> ScoffASTObject:
+        """Get last visited node.
+        :return: Last visited node
+        """
         last_visit = self._visit_history.popleft()
         self._visit_history.append(last_visit)
         return last_visit
 
-    def get_visit_history(self):
-        """Get visit history."""
+    def get_visit_history(self) -> List[ScoffASTObject]:
+        """Get visit history.
+
+        :return: Complete visit history
+        """
         return self._visit_history
 
-    def set_flag(self, flag_name):
-        """Set flag."""
+    def set_flag(self, flag_name: str):
+        """Set flag.
+
+        :param flag_name: Flag name
+        """
         self._flags[flag_name] = True
 
-    def clear_flag(self, flag_name):
-        """Clear flag."""
+    def clear_flag(self, flag_name: str):
+        """Clear flag.
+
+        :param flag_name: Flag name
+        """
         self._flags[flag_name] = False
 
-    def set_option(self, option_name, option_value):
-        """Set option."""
+    def set_option(self, option_name: str, option_value: Any):
+        """Set option.
+        :param option_name: Option name
+        :param option_value: Value to set
+        """
         self._options[option_name] = option_value
 
-    def get_option(self, option_name):
-        """Get option."""
+    def get_option(self, option_name: str) -> Any:
+        """Get option.
+
+        :param option_name: Option name
+        :return: Option value
+        """
         return self._options[option_name]
 
-    def get_flag_state(self, flag_name):
-        """Get flag state."""
+    def get_flag_state(self, flag_name: str) -> bool:
+        """Get flag state.
+
+        :param flag_name: Flag name
+        :return: Flag state
+        """
         if flag_name not in self._flags:
             return False
 

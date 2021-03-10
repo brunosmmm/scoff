@@ -1,6 +1,8 @@
 """Exclusive visit."""
 
 import re
+from typing import Any
+from scoff.ast import ScoffASTObject
 from scoff.ast.visits import ASTVisitor, VisitError
 
 
@@ -10,7 +12,7 @@ class ExclusiveASTVisitor(ASTVisitor):
     Visits only children which names match certain patterns.
     """
 
-    def __init__(self, *disallowed: str, **options):
+    def __init__(self, *disallowed: str, **options: Any):
         """Initialize.
 
         :param disallowed: List of disallowed prefix patterns, which will not \
@@ -33,7 +35,7 @@ class ExclusiveASTVisitor(ASTVisitor):
                 if name.startswith("visit_")
             }
 
-    def visit(self, node):
+    def visit(self, node: ScoffASTObject):
         """Begin visit.
 
         :param node: Node to start visiting at
@@ -47,7 +49,7 @@ class ExclusiveASTVisitor(ASTVisitor):
         ]
         return super().visit(node)
 
-    def add_disallowed_prefixes(self, *prefixes):
+    def add_disallowed_prefixes(self, *prefixes: str):
         """Disallow visiting of attributes with a prefix.
 
         :param prefixes: Disallowed prefix patterns
@@ -56,7 +58,7 @@ class ExclusiveASTVisitor(ASTVisitor):
             raise VisitError("cannot alter disallowed prefixes while visiting")
         self._not_allowed |= set(prefixes)
 
-    def add_allowed_prefixes(self, *prefixes):
+    def add_allowed_prefixes(self, *prefixes: str):
         """Add allowed prefixes.
 
         :param prefixes: Allowed prefix patterns
@@ -65,7 +67,7 @@ class ExclusiveASTVisitor(ASTVisitor):
             raise VisitError("cannot alter allowed prefixes while visiting")
         self._allowed_visits |= set(prefixes)
 
-    def _check_visit_allowed(self, name):
+    def _check_visit_allowed(self, name: str) -> bool:
         if self.get_flag_state("exclusive_visit"):
             for allowed in self.__allowed_matches:
                 if allowed.match(name) is not None:

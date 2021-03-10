@@ -75,7 +75,7 @@ class ErrorDescriptor:
                 raise TypeError("debug_callback must be a callable")
         self._debug_callback = debug_callback
 
-    def get_message(self, **msg_kwargs: str):
+    def get_message(self, **msg_kwargs: str) -> str:
         """Get error message.
 
         :param msg_kwargs: Values for formatting of the error message
@@ -83,7 +83,7 @@ class ErrorDescriptor:
         """
         return self.fmt_str.format(**msg_kwargs)
 
-    def get_exception(self, **msg_kwargs: str):
+    def get_exception(self, **msg_kwargs: str) -> Exception:
         """Get Exception.
 
         :param msg_kwargs: Values for formatting of the error message
@@ -116,7 +116,7 @@ class ErrorGeneratorMixin:
         code: ExceptionCodeType,
         errors: Dict[ExceptionCodeType, ErrorDescriptor],
         **msg_kwargs: str
-    ):
+    ) -> str:
         """Get error from code.
 
         :param code: Error code

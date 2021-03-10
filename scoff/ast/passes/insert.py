@@ -1,13 +1,17 @@
 """Node inserter."""
 
+from scoff.ast import ScoffASTObject
 from scoff.ast.visits import ASTVisitor
 
 
 class NodeInserter(ASTVisitor):
     """Node inserter."""
 
-    def __init__(self, ast):
-        """Initialize."""
+    def __init__(self, ast: ScoffASTObject):
+        """Initialize.
+
+        :param ast: The AST to insert nodes into
+        """
         super().__init__()
         self._ast = ast
         self._insert_after = True
@@ -39,8 +43,15 @@ class NodeInserter(ASTVisitor):
             else:
                 return [self._insert_contents, node]
 
-    def insert(self, what, where, after=True):
-        """Insert node."""
+    def insert(
+        self, what: ScoffASTObject, where: ScoffASTObject, after: bool = True
+    ):
+        """Insert a node.
+
+        :param what: What to insert
+        :param where: Where to insert
+        :after: Whether to insert after or before *WHERE*
+        """
         self._inserting = True
         self._insert_after = after
         self._insert_contents = what

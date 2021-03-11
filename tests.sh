@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-python $(which coverage) run --source=scoff ./examples/StateMachine/sm_visit.py examples/StateMachine/miss_grant_controller.sm > /dev/null
+python $(which coverage) run --source=scoff ./examples/StateMachine/sm_visit.py --dump examples/StateMachine/miss_grant_controller.sm > /dev/null
 mv .coverage .coverage.sm
 python $(which coverage) run --source=scoff ./examples/StateMachine/gen_classes.py > /dev/null
 mv .coverage .coverage.gen

@@ -101,6 +101,9 @@ if __name__ == "__main__":
     sys.setrecursionlimit(100)
     parser = ArgumentParser()
     parser.add_argument("fname", help="state machine file")
+    parser.add_argument(
+        "--dump", help="dump generated code", action="store_true"
+    )
 
     args = parser.parse_args()
 
@@ -121,3 +124,6 @@ if __name__ == "__main__":
             print(f" Action: {action}")
         for _from, to in visitor.get_state_transitions(state).items():
             print(f" Transition: {_from} -> {to}")
+
+    if args.dump:
+        print(ast.generate_code())

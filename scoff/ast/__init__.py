@@ -204,3 +204,14 @@ class ScoffASTObject:
         ret = copy.deepcopy(self)
         ret.parent = parent
         return ret
+
+    def _generate_code(self, **kwargs: Any) -> str:
+        """Actually generate code."""
+        raise NotImplementedError
+
+    def generate_code(self, **kwargs: Any) -> str:
+        """Generate code."""
+        indent_str = kwargs.get("indent_str", "  ")
+        indent_level = kwargs.get("indent", 0)
+        ret = self._generate_code(**kwargs)
+        return indent_str * indent_level + ret

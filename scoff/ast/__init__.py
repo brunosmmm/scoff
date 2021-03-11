@@ -1,7 +1,7 @@
 """Abstract syntax tree."""
 
 import copy
-from typing import Union, Optional
+from typing import Union, Optional, Any
 
 
 class ScoffASTObject:
@@ -21,7 +21,7 @@ class ScoffASTObject:
     # NOTE: textx is setting things as a class variable!!!!
     _cls_textx_data = {}
 
-    def __init__(self, root_node: bool = False, **kwargs):
+    def __init__(self, root_node: bool = False, **kwargs: Any):
         """Initialize.
 
         :param root_node: Whether this is the root node or not
@@ -106,6 +106,11 @@ class ScoffASTObject:
         super().__delattr__(name)
 
     @property
+    def initialized(self):
+        """Get if fully initialized."""
+        return hasattr(self, "_initialized") and self._initialized
+
+    @property
     def parent(self):
         """Get parent."""
         if self._root:
@@ -117,7 +122,7 @@ class ScoffASTObject:
     def parent(self, value: Union["ScoffASTObject", None]):
         """Set parent."""
         # self._textx_data.parent = value
-        if self._root:
+        if hasattr(self, "_initialized") and self._initialized and self._root:
             return
         self._parent = value
 

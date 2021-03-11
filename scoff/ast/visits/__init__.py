@@ -71,8 +71,15 @@ class ASTVisitor:
                 self.set_option(opt_name, opt_value)
 
         # pre-allocate visit function table
-        self._method_names = [
-            name for name in dir(self) if callable(getattr(self, name))
+        self._visit_method_names = [
+            name
+            for name in dir(self)
+            if name.startswith("visit_") and callable(getattr(self, name))
+        ]
+        self._pre_visit_method_names = [
+            name
+            for name in dir(self)
+            if name.startswith("visitPre_") and callable(getattr(self, name))
         ]
 
         # visit function table
@@ -357,13 +364,11 @@ class ASTVisitor:
         # pre-allocate visit function table
         self.__visit_fn_table = {
             strip_name(name, "visit_"): getattr(self, name)
-            for name in self._method_names
-            if name.startswith("visit_")
+            for name in self._visit_method_names
         }
         self.__visit_pre_fn_table = {
             strip_name(name, "visitPre_"): getattr(self, name)
-            for name in self._method_names
-            if name.startswith("visitPre_")
+            for name in self._pre_visit_method_names
         }
 
         self._visiting = True

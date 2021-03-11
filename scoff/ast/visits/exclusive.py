@@ -30,9 +30,7 @@ class ExclusiveASTVisitor(ASTVisitor):
         if self.get_flag_state("exclusive_visit"):
             self.set_flag("minimal_depth")
             self._allowed_visits = {
-                "^{}$".format(name[6:])
-                for name in self._method_names
-                if name.startswith("visit_")
+                "^{}$".format(name[6:]) for name in self._visit_method_names
             }
 
     def visit(self, node: ScoffASTObject):

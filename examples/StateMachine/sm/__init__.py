@@ -98,7 +98,7 @@ class State(ScoffASTObject):
         """Generate code."""
         state = f"state {self.name}\n"
         act_list = (
-            ", ".join([action.name for action in self.actions])
+            " ".join([action.name for action in self.actions])
             if self.actions is not None
             else ""
         )

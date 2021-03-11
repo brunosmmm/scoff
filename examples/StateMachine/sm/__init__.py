@@ -27,12 +27,7 @@ class StateMachine(ScoffASTObject):
             [event.generate_code(indent=1, **kwargs) for event in self.events]
         )
         reset_evts = (
-            "\n".join(
-                [
-                    event.generate_code(indent=1, **kwargs)
-                    for event in self.resetEvents
-                ]
-            )
+            "\n".join(["  " + event.name for event in self.resetEvents])
             if self.resetEvents is not None
             else ""
         )

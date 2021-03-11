@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Parse and visit state machine."""
 
 import sys

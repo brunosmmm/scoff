@@ -98,7 +98,6 @@ class StateMachineVisitor(ASTVisitor):
 
 if __name__ == "__main__":
 
-    sys.setrecursionlimit(100)
     parser = ArgumentParser()
     parser.add_argument("fname", help="state machine file")
     parser.add_argument(
@@ -117,13 +116,13 @@ if __name__ == "__main__":
 
     # print info
     states = visitor.states
-    print("Found states: " + ", ".join(states))
+    print("Found states: " + ", ".join(states), file=sys.stderr)
     for state in states:
-        print(f"State {state}:")
+        print(f"State {state}:", file=sys.stderr)
         for action in visitor.get_state_actions(state):
-            print(f" Action: {action}")
+            print(f" Action: {action}", file=sys.stderr)
         for _from, to in visitor.get_state_transitions(state).items():
-            print(f" Transition: {_from} -> {to}")
+            print(f" Transition: {_from} -> {to}", file=sys.stderr)
 
     if args.dump:
         print(ast.generate_code())

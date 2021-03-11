@@ -1,10 +1,12 @@
 """Parse grammars."""
 
-from typing import Tuple, Any
+from typing import Tuple
 from textx.metamodel import metamodel_from_file
 
+from scoff.ast import ScoffASTObject
 
-def parse_text(text: str, grammar_file: str) -> Tuple[str, Any]:
+
+def parse_text(text: str, grammar_file: str) -> Tuple[str, ScoffASTObject]:
     """Parse text directly.
 
     :param text: Text to be parsed
@@ -16,7 +18,7 @@ def parse_text(text: str, grammar_file: str) -> Tuple[str, Any]:
     return (text, decl)
 
 
-def parse_file(filename: str, grammar_file: str) -> Tuple[str, str]:
+def parse_file(filename: str, grammar_file: str) -> Tuple[str, ScoffASTObject]:
     """Parse a source file.
 
     :param filename: Path to file

@@ -95,7 +95,7 @@ class ASTVisitor:
         self._visited_nodes = set()
 
     def add_visit_hook(
-        self, node_cls_name: str, method: Callable[ScoffASTObject]
+        self, node_cls_name: str, method: Callable[ScoffASTObject, Any]
     ):
         """Add external hook to call when a certain class is visited.
 

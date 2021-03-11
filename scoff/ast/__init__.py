@@ -114,7 +114,7 @@ class ScoffASTObject:
         return self._parent
 
     @parent.setter
-    def parent(self, value: Union[__class__, None]):
+    def parent(self, value: Union["ScoffASTObject", None]):
         """Set parent."""
         # self._textx_data.parent = value
         if self._root:
@@ -191,7 +191,7 @@ class ScoffASTObject:
                         _value.parent = ret
         return ret
 
-    def copy(self, parent: Optional[__class__] = None):
+    def copy(self, parent: Optional["ScoffASTObject"] = None):
         """Get a copy.
 
         :param parent: A node to set as parent after copying

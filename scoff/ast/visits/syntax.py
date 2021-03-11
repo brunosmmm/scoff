@@ -405,7 +405,7 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
 
 
 # Typing aliases
-NodeVisitorFunction = Callable[SyntaxChecker, ScoffASTObject]
+NodeVisitorFunction = Callable[SyntaxChecker, Union[ScoffASTObject, None]]
 
 
 def enter_scope(fn: NodeVisitorFunction) -> Callable:

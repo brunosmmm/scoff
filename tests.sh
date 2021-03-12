@@ -11,10 +11,10 @@ python $(which coverage) run --source=scoff ./examples/StateMachine/gen_classes.
 mv .coverage .coverage.gen
 
 # test checking examples
-python $(which coverage) run --source=scoff ./examples/StateMachine/sm_check.py examples/StateMachine/assets/err1.sm > /dev/null
-mv .coverage .coverage.err1
-python $(which coverage) run --source=scoff ./examples/StateMachine/sm_check.py examples/StateMachine/assets/err2.sm > /dev/null
-mv .coverage .coverage.err2
+for f in examples/StateMachine/assets/*.sm; do
+    python $(which coverage) run --source=scoff ./examples/StateMachine/sm_check.py $f > /dev/null
+    mv .coverage .coverage.$(basename $f)
+done
 
 virtualenv_root=$(poetry env info -p)
 coverage_report_options='-i --omit=usage/*,tests/*,venv/*,tools/*'",${virtualenv_root}"'/*'

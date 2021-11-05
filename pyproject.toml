@@ -6,7 +6,7 @@ authors = ["Bruno Morais <brunosmmm@gmail.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = ">=3.8,<3.11"
 textx = "^2.3.0"
 
 [tool.poetry.dev-dependencies]

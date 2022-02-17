@@ -1,7 +1,7 @@
 """Node remover."""
 
-from typing import Any, Callable
-from scoff.ast.visits import ASTVisitor
+from typing import Callable, Tuple
+from scoff.ast.visits import ASTVisitor, VisitOptionType
 
 
 class NodeRemover(ASTVisitor):
@@ -10,7 +10,7 @@ class NodeRemover(ASTVisitor):
     Removes all nodes in AST which match certain class names.
     """
 
-    def __init__(self, *node_types: str, **flags: Any):
+    def __init__(self, *node_types: Tuple[str], **flags: VisitOptionType):
         """Initialize.
 
         :param node_types: Class names for node types to remove
@@ -28,14 +28,19 @@ class NodeRemover(ASTVisitor):
 class ConditionalNodeRemover(NodeRemover):
     """Remove nodes but only under certain conditions."""
 
-    def __init__(self, node_type: str, decide_fn: Callable, **flags: Any):
+    def __init__(
+        self,
+        *node_types: Tuple[str],
+        decide_fn: Callable,
+        **flags: VisitOptionType
+    ):
         """Initialize.
 
         :param node_type: Class name of node type to remove
         :param decide_fn: A callable which is called to decide on removal
         :param flags: Any other visitor flags
         """
-        super().__init__(node_type, **flags)
+        super().__init__(*node_types, **flags)
         self._decide_cb = decide_fn
 
     def _delete_node(self, node):

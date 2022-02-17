@@ -8,6 +8,7 @@ from scoff.ast.visits.objects import ScoffVisitObject
 # Type aliases
 VisitReturnType = Union[None, ScoffASTObject, List[ScoffASTObject]]
 VisitOptionType = Dict[str, Union[str, bool, int]]
+VisitAndModifyType = Union[ScoffASTObject, List[ScoffASTObject], bool, None]
 
 # Visit history object
 VisitHistory = namedtuple("VisitHistory", ["node", "replaces", "depth"])
@@ -409,7 +410,7 @@ class ASTVisitor:
 
     def _visit_and_modify(
         self, node: ScoffASTObject, attr=None
-    ) -> Union[ScoffASTObject, List[ScoffASTObject], bool, None]:
+    ) -> VisitAndModifyType:
         """Visit a node's attributes and modify if necesary.
 
         :return: True/False to indicate if attribute is modified or not OR \

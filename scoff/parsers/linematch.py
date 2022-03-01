@@ -2,14 +2,15 @@
 
 import re
 from typing import Union, Any, Tuple, Dict
-from scoff.parsers.token import SimpleToken, SimpleTokenField
+from scoff.parsers.token import (
+    SimpleToken,
+    SimpleTokenField,
+    MatcherError,
+    TokenMatcher,
+)
 
 
-class MatcherError(Exception):
-    """Parser error."""
-
-
-class LineMatcher:
+class LineMatcher(TokenMatcher):
     """Line matcher parser.
 
     Tries to match an entire line defined by token compositions.
@@ -44,17 +45,13 @@ class LineMatcher:
 
         self._gobble = gobble
         gobble_str = b"\s*" if gobble is True else b""
-        self._pattern = re.compile(
-            gobble_str + b"".join([token.regex for token in self._tokens]),
-            re.S,
+        super().__init__(
+            re.compile(
+                gobble_str + b"".join([token.regex for token in self._tokens]),
+                re.S,
+            )
+            ** kwargs
         )
-
-        self._options = kwargs
-
-    @property
-    def options(self):
-        """Get options."""
-        return self._options
 
     def parse_first(
         self, text: bytes, position: int
@@ -66,24 +63,15 @@ class LineMatcher:
         :return: A tuple containing the number of characters consumed and \
         a dictionary containing the tokens parsed by field name
         """
-        match = self._pattern.match(text, position)
-        if match is None:
-            raise MatcherError("failed to parse.")
-        start, end = match.span()
-
-        decoded_groups = []
-        for group in match.groups():
-            if group is None:
-                decoded_groups.append(None)
-            else:
-                decoded_groups.append(group.decode())
+        span, matches, text = super().parse_first(text, position)
 
         return (
-            end - start,
+            span,
             {
-                field.name: value
-                for field, value in zip(self._ordered_fields, decoded_groups)
+                field.name: matches[idx]
+                for field, idx in enumerate(self._ordered_fields)
             },
+            text,
         )
 
     def parse(self, line: str) -> Dict[str, str]:
@@ -101,3 +89,8 @@ class LineMatcher:
             field.name: value
             for field, value in zip(self._ordered_fields, match.groups())
         }
+
+    @property
+    def matches_newline(self):
+        """Get whether this matches the new line character."""
+        return True

@@ -49,8 +49,8 @@ class LineMatcher(TokenMatcher):
             re.compile(
                 gobble_str + b"".join([token.regex for token in self._tokens]),
                 re.S,
-            )
-            ** kwargs
+            ),
+            **kwargs
         )
 
     def parse_first(

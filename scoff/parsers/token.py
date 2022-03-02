@@ -40,6 +40,7 @@ class TokenMatcher:
                 start, end = m.span()
                 whitespace_size += end - start
 
+        old_position = position
         position += whitespace_size
         match = self._pattern.match(text, position)
         if match is None:
@@ -57,6 +58,7 @@ class TokenMatcher:
             end - start + whitespace_size,
             {idx: value for idx, value in enumerate(decoded_groups)},
             match.group(0),
+            text[old_position:position] if consume_whitespace else None,
         )
 
     @property

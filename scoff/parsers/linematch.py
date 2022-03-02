@@ -54,7 +54,7 @@ class LineMatcher(TokenMatcher):
         )
 
     def parse_first(
-        self, text: bytes, position: int
+        self, text: bytes, position: int, consume_whitespace=False
     ) -> Tuple[int, Dict[str, str]]:
         """Try to parse first occurrence.
 
@@ -63,7 +63,9 @@ class LineMatcher(TokenMatcher):
         :return: A tuple containing the number of characters consumed and \
         a dictionary containing the tokens parsed by field name
         """
-        span, matches, text = super().parse_first(text, position)
+        span, matches, text, consumed = super().parse_first(
+            text, position, consume_whitespace
+        )
 
         return (
             span,
@@ -72,6 +74,7 @@ class LineMatcher(TokenMatcher):
                 for field, idx in enumerate(self._ordered_fields)
             },
             text,
+            consumed,
         )
 
     def parse(self, line: str) -> Dict[str, str]:

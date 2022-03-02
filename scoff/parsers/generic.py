@@ -77,13 +77,14 @@ class DataParser:
             m = EMPTY_LINE.match(self._data, position)
             if m is not None:
                 # an empty line, consume
-                return (m.span()[1], None, None, None)
+                start, end = m.span()
+                return (end - start, None, None, None, m.group(0))
 
         for candidate in candidates:
             try:
                 if not isinstance(candidate, TokenMatcher):
                     raise TypeError("candidate must be TokenMatcher object")
-                size, fields, text = candidate.parse_first(
+                size, fields, text, consumed = candidate.parse_first(
                     self._data, position, self._consume
                 )
             except MatcherError:
@@ -111,7 +112,7 @@ class DataParser:
                 self._current_line += (
                     self._data.count(b"\n", position, position + size) + 1
                 )
-            return (size, candidate, fields, text)
+            return (size, candidate, fields, text, consumed)
         raise ParserError(f"could not parse data at position {position}")
 
     def _current_state_function(self, position: int) -> int:
@@ -121,9 +122,10 @@ class DataParser:
         try:
 
             ret = getattr(self, "_state_{}".format(self._state))(position)
-            size, stmt, fields, text = ret
+            size, _, stmt, fields, _ = ret
 
         except TypeError:
+            raise
             raise ParserError("error in state function")
         # call hooks
         if self._state in self._state_hooks:

@@ -4,6 +4,10 @@ import copy
 from typing import Union, Optional, Any
 
 
+class ASTDefinitionError(Exception):
+    """Error in AST class definition."""
+
+
 class ScoffASTObject:
     """Scoff abstract syntax tree object."""
 
@@ -17,6 +21,7 @@ class ScoffASTObject:
         "_root",
         "_textx_data",
     )
+    _slot_types = None
 
     # NOTE: textx is setting things as a class variable!!!!
     _cls_textx_data = {}
@@ -51,9 +56,26 @@ class ScoffASTObject:
             if name.startswith("_tx"):
                 self._textx_data[name] = value
             else:
+                self._check_slot_type(name, value)
                 setattr(self, name, value)
+        if hasattr(self, "_slot_types") and self._slot_types is not None:
+            if len(self._slot_types) != len(self.__slots__):
+                raise ASTDefinitionError("must declare all slot types or none")
 
         self._initialized = True
+
+    def _check_slot_type(self, slot_name, value):
+        """Check type."""
+        if slot_name == "parent":
+            return
+        if hasattr(self, "_slot_types") and self._slot_types is not None:
+            name_index = self.__slots__.index(slot_name)
+            slot_type = self._slot_types[name_index]
+            if slot_type is not None and not isinstance(value, slot_type):
+                raise TypeError(
+                    f"expected {slot_type.__name__}, "
+                    f"got {value.__class__.__name__}"
+                )
 
     def __setattr__(self, name, value):
         """Set an attribute of the AST object.
@@ -62,6 +84,7 @@ class ScoffASTObject:
         """
         if hasattr(self, "_initialized") and self._initialized:
             if name in self._visitable_children_names:
+                self._check_slot_type(name, value)
                 if isinstance(value, ScoffASTObject):
                     value.parent = self
                     value._parent_key = name
@@ -91,7 +114,7 @@ class ScoffASTObject:
         super().__setattr__(name, value)
 
     def __getattr__(self, name):
-        # FIXME this does not work
+        """Get attribute."""
         if name.startswith("_tx"):
             if name in self._textx_data:
                 return self._textx_data[name]
@@ -99,6 +122,7 @@ class ScoffASTObject:
         raise AttributeError(name)
 
     def __delattr__(self, name):
+        """Delete attribute."""
         if name.startswith("_tx"):
             if name in self._textx_data:
                 del self._textx_data[name]

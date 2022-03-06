@@ -2,6 +2,7 @@
 
 import copy
 from typing import Union, Optional, Any
+from types import GenericAlias
 
 
 class ASTDefinitionError(Exception):
@@ -61,8 +62,51 @@ class ScoffASTObject:
         if hasattr(self, "_slot_types") and self._slot_types is not None:
             if len(self._slot_types) != len(self.__slots__):
                 raise ASTDefinitionError("must declare all slot types or none")
+        self._check_typing_definitions()
 
         self._initialized = True
+
+    def _check_typing_definitions(self):
+        """Check definitions."""
+        annotations = self.__init__.__annotations__
+        for slot_name in annotations:
+            slot_type = annotations[slot_name]
+            if hasattr(slot_type, "__args__"):
+                slot_type_args = slot_type.__args__
+                generic_alias_used = False
+                for arg in slot_type_args:
+                    if arg is None:
+                        continue
+                    if isinstance(arg, GenericAlias):
+                        if generic_alias_used:
+                            raise ASTDefinitionError(
+                                "only one GenericAlias allowed in Union type"
+                            )
+                        generic_alias_used = True
+
+    def _check_generic_alias(self, slot_type, value):
+        """Check when using generic alias."""
+        if isinstance(slot_type, GenericAlias):
+            # cannot use isinstance directly
+            if slot_type.__origin__ not in (list, tuple):
+                raise ASTDefinitionError(
+                    "only list or tuple supported for GenericAlias"
+                )
+            type_args = slot_type.__args__
+            if len(type_args) > 1:
+                raise ASTDefinitionError(
+                    "GenericAlias with len > 1 not supported"
+                )
+            (slot_type,) = slot_type.__args__
+            if isinstance(value, (list, tuple)):
+                for _value in value:
+                    if not isinstance(_value, slot_type):
+                        raise TypeError(
+                            f"expected {slot_type.__name__}, "
+                            f"got {_value.__class__.__name__}"
+                        )
+            return True
+        return False
 
     def _check_slot_type(self, slot_name, value):
         """Check type."""
@@ -77,13 +121,33 @@ class ScoffASTObject:
                     f"got {value.__class__.__name__}"
                 )
         else:
-            # does not support typing.* classes
             annotations = self.__init__.__annotations__
             if slot_name in annotations:
                 slot_type = annotations[slot_name]
-                if not isinstance(value, slot_type):
+                if self._check_generic_alias(slot_type, value):
+                    return
+
+                try:
+                    is_instance = isinstance(value, slot_type)
+                except TypeError:
+                    # generic alias
+                    if hasattr(slot_type, "__args__"):
+                        slot_type_args = slot_type.__args__
+                        for arg in slot_type_args:
+                            if arg is None:
+                                continue
+                            self._check_generic_alias(arg, value)
+                        return
+                    else:
+                        raise ASTDefinitionError("unknown typing error")
+
+                if not is_instance:
+                    if isinstance(slot_type, type):
+                        expected = slot_type.__name__
+                    else:
+                        expected = repr(slot_type)
                     raise TypeError(
-                        f"expected {slot_type.__name__}, "
+                        f"expected {expected}, "
                         f"got {value.__class__.__name__}"
                     )
 

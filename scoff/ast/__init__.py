@@ -101,8 +101,12 @@ class ScoffASTObject:
             if isinstance(value, (list, tuple)):
                 for _value in value:
                     if not isinstance(_value, slot_type):
+                        if isinstance(slot_type, type):
+                            expected = slot_type.__name__
+                        else:
+                            expected = repr(slot_type)
                         raise TypeError(
-                            f"expected {slot_type.__name__}, "
+                            f"expected {expected}, "
                             f"got {_value.__class__.__name__}"
                         )
             return True
@@ -116,9 +120,12 @@ class ScoffASTObject:
             name_index = self.__slots__.index(slot_name)
             slot_type = self._slot_types[name_index]
             if slot_type is not None and not isinstance(value, slot_type):
+                if isinstance(slot_type, type):
+                    expected = slot_type.__name__
+                else:
+                    expected = repr(slot_type)
                 raise TypeError(
-                    f"expected {slot_type.__name__}, "
-                    f"got {value.__class__.__name__}"
+                    f"expected {expected}, " f"got {value.__class__.__name__}"
                 )
         else:
             annotations = self.__init__.__annotations__

@@ -76,6 +76,18 @@ class ScoffASTObject:
                     f"expected {slot_type.__name__}, "
                     f"got {value.__class__.__name__}"
                 )
+        else:
+            # does not support typing.* classes
+            annotations = self.__init__.__annotations__
+            if slot_name in annotations:
+                slot_type = annotations[slot_name]
+                if isinstance(slot_type, type) and not isinstance(
+                    value, slot_type
+                ):
+                    raise TypeError(
+                        f"expected {slot_type.__name__}, "
+                        f"got {value.__class__.__name__}"
+                    )
 
     def __setattr__(self, name, value):
         """Set an attribute of the AST object.

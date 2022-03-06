@@ -1,7 +1,8 @@
 """Node inserter."""
 
+from typing import Optional
 from scoff.ast import ScoffASTObject
-from scoff.ast.visits import ASTVisitor
+from scoff.ast.visits import ASTVisitor, VisitAndModifyType
 
 
 class NodeInserter(ASTVisitor):
@@ -15,11 +16,13 @@ class NodeInserter(ASTVisitor):
         super().__init__()
         self._ast = ast
         self._insert_after = True
-        self._matching_node = None
-        self._insert_contents = None
+        self._matching_node: ScoffASTObject = None
+        self._insert_contents: ScoffASTObject = None
         self._inserting = False
 
-    def _visit_and_modify(self, node, attr=None):
+    def _visit_and_modify(
+        self, node: ScoffASTObject, attr: Optional[str] = None
+    ) -> VisitAndModifyType:
         if self._inserting is False:
             return node
 
@@ -32,10 +35,10 @@ class NodeInserter(ASTVisitor):
 
         if isinstance(self._insert_contents, (tuple, list)):
             if self._insert_after:
-                ret = [node].extend(self._insert_contents)
+                ret = [node, self._insert_contents]
                 return ret
             else:
-                self._insert_contents.extend([node])
+                [self._insert_contents, node]
                 return self._insert_contents
         else:
             if self._insert_after:

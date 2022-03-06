@@ -1,12 +1,14 @@
 """AST Visitors."""
 
 from collections import deque, namedtuple
-from typing import Any, Optional, Callable, List, Type, Union
+from typing import Any, Optional, Callable, List, Type, Union, Dict, Set
 from scoff.ast import ScoffASTObject
 from scoff.ast.visits.objects import ScoffVisitObject
 
 # Type aliases
 VisitReturnType = Union[None, ScoffASTObject, List[ScoffASTObject]]
+VisitOptionType = Dict[str, Union[str, bool, int]]
+VisitAndModifyType = Union[ScoffASTObject, List[ScoffASTObject], bool, None]
 
 # Visit history object
 VisitHistory = namedtuple("VisitHistory", ["node", "replaces", "depth"])
@@ -40,7 +42,7 @@ class VisitError(Exception):
 class ASTVisitor:
     """Visits an AST."""
 
-    def __init__(self, **options: Any):
+    def __init__(self, **options: VisitOptionType):
         """Initialize.
 
         :param options: Dictionary of options (flags)
@@ -49,13 +51,13 @@ class ASTVisitor:
         self._visiting = False
         self._dont_visit = False
         self._visit_depth = 0
-        self._visit_history = deque()
+        self._visit_history: deque[VisitHistory] = deque()
         self._flags = {"exclusive_visit": False, "minimal_depth": False}
         self._options = {"logger_fn": None, "history_len": 0}
-        self._hooks = {}
+        self._hooks: Dict[str, Set[Callable]] = {}
         self.reset_visits()
         self.clear_flag("debug_visit")
-        self._visited_nodes = set()
+        self._visited_nodes: Set[ScoffASTObject] = set()
 
         # flags
         self.clear_flag("no_children_visits")
@@ -83,8 +85,8 @@ class ASTVisitor:
         ]
 
         # visit function table
-        self.__visit_fn_table = {}
-        self.__visit_pre_fn_table = {}
+        self.__visit_fn_table: Dict[str, Callable] = {}
+        self.__visit_pre_fn_table: Dict[str, Callable] = {}
 
     def _debug_visit(self, message):
         """Print debug messages when visiting."""
@@ -134,15 +136,16 @@ class ASTVisitor:
         """
         return node in self._visited_nodes
 
-    def get_last_visited(self) -> ScoffASTObject:
+    def get_last_visited(self) -> VisitHistory:
         """Get last visited node.
+
         :return: Last visited node
         """
         last_visit = self._visit_history.popleft()
         self._visit_history.append(last_visit)
         return last_visit
 
-    def get_visit_history(self) -> List[ScoffASTObject]:
+    def get_visit_history(self) -> deque[VisitHistory]:
         """Get visit history.
 
         :return: Complete visit history
@@ -165,6 +168,7 @@ class ASTVisitor:
 
     def set_option(self, option_name: str, option_value: Any):
         """Set option.
+
         :param option_name: Option name
         :param option_value: Value to set
         """
@@ -191,7 +195,7 @@ class ASTVisitor:
 
     def get_first_occurrence(
         self, node: ScoffASTObject, node_type: Type, inclusive: bool = True
-    ) -> ScoffASTObject:
+    ) -> Union[None, ScoffASTObject]:
         """Return first occurrence of type.
 
         :param node: Node to inspect
@@ -280,7 +284,7 @@ class ASTVisitor:
         # remove visitation list
         self._visited_nodes = set()
 
-    def _store_visit(self, visit_history: ScoffASTObject):
+    def _store_visit(self, visit_history: VisitHistory):
         """Store visit."""
         history_len = self.get_option("history_len")
         if history_len == 0:
@@ -406,7 +410,7 @@ class ASTVisitor:
 
     def _visit_and_modify(
         self, node: ScoffASTObject, attr=None
-    ) -> Union[bool, None]:
+    ) -> VisitAndModifyType:
         """Visit a node's attributes and modify if necesary.
 
         :return: True/False to indicate if attribute is modified or not OR \

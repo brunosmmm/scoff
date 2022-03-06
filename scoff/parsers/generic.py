@@ -4,6 +4,7 @@ import re
 from collections import deque
 from typing import Union, Any, List, Deque, Tuple, Dict, Callable
 from scoff.parsers.linematch import MatcherError, LineMatcher
+from scoff.parsers.token import SimpleToken, SimpleTokenField, TokenMatcher
 
 EMPTY_LINE = re.compile(b"\s*$")
 
@@ -55,7 +56,6 @@ class DataParser:
         if not callable(hook):
             raise TypeError("hook must be callable")
         if state not in self.states:
-            print(self.states)
             raise ParserError(f"unknown state '{state}'")
         if state not in self._state_hooks:
             self._state_hooks[state] = {hook}
@@ -69,19 +69,24 @@ class DataParser:
         """Handle candidate options."""
 
     def _try_parse(
-        self, candidates: List[LineMatcher], position: int
+        self,
+        candidates: List[TokenMatcher],
+        position: int,
     ) -> Tuple[int, LineMatcher, Dict[str, str]]:
         if self._consume:
             m = EMPTY_LINE.match(self._data, position)
             if m is not None:
                 # an empty line, consume
-                return (m.span()[1], None, None)
+                start, end = m.span()
+                return (end - start, None, None, None, m.group(0))
 
         for candidate in candidates:
             try:
-                if not isinstance(candidate, LineMatcher):
-                    raise TypeError("candidate must be LineMatcher object")
-                size, fields = candidate.parse_first(self._data, position)
+                if not isinstance(candidate, TokenMatcher):
+                    raise TypeError("candidate must be TokenMatcher object")
+                size, fields, text, consumed = candidate.parse_first(
+                    self._data, position, self._consume
+                )
             except MatcherError:
                 continue
 
@@ -103,19 +108,25 @@ class DataParser:
             # advance position
             self._current_position += size
             # advance line
-            self._current_line += (
-                self._data.count(b"\n", position, position + size) + 1
-            )
-            return (size, candidate, fields)
-        raise ParserError("could not parse data")
+            if candidate.matches_newline:
+                self._current_line += (
+                    self._data.count(b"\n", position, position + size) + 1
+                )
+            return (size, candidate, fields, text, consumed)
+        raise ParserError(f"could not parse data at position {position}")
 
     def _current_state_function(self, position: int) -> int:
         if not hasattr(self, "_state_{}".format(self._state)):
             raise RuntimeError(f"in unknown state: {self._state}")
 
-        size, stmt, fields = getattr(self, "_state_{}".format(self._state))(
-            position
-        )
+        try:
+
+            ret = getattr(self, "_state_{}".format(self._state))(position)
+            size, _, stmt, fields, _ = ret
+
+        except TypeError:
+            raise
+            raise ParserError("error in state function")
         # call hooks
         if self._state in self._state_hooks:
             for hook in self._state_hooks[self._state]:
@@ -160,7 +171,7 @@ class DataParser:
                 break
             size = self._current_state_function(current_pos)
             # consume data
-            current_pos += size + 1
+            current_pos += size
 
         return current_pos
 

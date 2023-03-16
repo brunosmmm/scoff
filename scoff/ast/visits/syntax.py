@@ -144,6 +144,28 @@ class SyntaxChecker(ASTVisitor, ErrorGeneratorMixin):
         else:
             enter_loc, self._collected_locals = self._scope_stack.pop()
 
+    def swap_scope_node(
+        self, old_loc: ScoffASTObject, new_loc: ScoffASTObject
+    ):
+        """Replace scope node."""
+        if old_loc is not None and old_loc in self._collected_scopes:
+            if new_loc in self._collected_scopes:
+                raise RuntimeError("cannot replace scope")
+            self._debug_visit(f"replacing scope {old_loc} -> {new_loc}")
+            # find in stack
+            found = False
+            for idx, (scope, _locals) in enumerate(self._scope_stack):
+                if scope == old_loc:
+                    found = True
+                    break
+            if found:
+                self._scope_stack[idx] = [new_loc, _locals]
+
+            collected_locals = self._collected_scopes.pop(old_loc)
+            self._collected_scopes[new_loc] = collected_locals
+        else:
+            raise RuntimeError("cannot replace scope")
+
     def _collect_symbol(
         self,
         name: str,

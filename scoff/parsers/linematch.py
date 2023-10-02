@@ -71,7 +71,7 @@ class LineMatcher(TokenMatcher):
             span,
             {
                 field.name: matches[idx]
-                for field, idx in enumerate(self._ordered_fields)
+                for idx, field in enumerate(self._ordered_fields)
             },
             text,
             consumed,

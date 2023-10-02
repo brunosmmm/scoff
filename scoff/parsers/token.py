@@ -1,6 +1,6 @@
 """Generic Parser tokens."""
 
-from typing import Union, Tuple, Dict
+from typing import Union, Tuple, Dict, Optional
 import re
 
 WHITESPACE = re.compile(b"\s+")
@@ -25,7 +25,7 @@ class TokenMatcher:
 
     def parse_first(
         self, text: bytes, position: int, consume_whitespace=False
-    ) -> Tuple[int, Dict[str, str]]:
+    ) -> Tuple[int, Dict[int, str], str, Optional[bytes]]:
         """Try to parse first occurrence.
 
         :param text: Textual data to be parsed
@@ -56,7 +56,7 @@ class TokenMatcher:
 
         return (
             end - start + whitespace_size,
-            {idx: value for idx, value in enumerate(decoded_groups)},
+            dict(enumerate(decoded_groups)),
             match.group(0),
             text[old_position:position] if consume_whitespace else None,
         )

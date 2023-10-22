@@ -21,6 +21,7 @@ class ScoffASTObject:
         "_initialized",
         "_root",
         "_textx_data",
+        "_precious",
     )
     _slot_types = None
 
@@ -40,6 +41,7 @@ class ScoffASTObject:
         self._root = root_node
         self._parent_key = None
         self._textx_data = copy.copy(self._cls_textx_data)
+        self._precious = False
         self.SCOFF_META = {}
         if "SCOFF_META" in kwargs:
             self.SCOFF_META = kwargs.pop("SCOFF_META")
@@ -320,3 +322,13 @@ class ScoffASTObject:
         indent_level = kwargs.get("indent", 0)
         ret = self._generate_code(**kwargs)
         return indent_str * indent_level + ret
+
+    @property
+    def precious(self):
+        """Get precious."""
+        return self._precious
+
+    @precious.setter
+    def precious(self, value: bool):
+        """Set precious."""
+        self._precious = value

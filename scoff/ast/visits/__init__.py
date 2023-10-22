@@ -17,6 +17,8 @@ VisitHistory = namedtuple("VisitHistory", ["node", "replaces", "depth"])
 class NoChildrenVisits(Exception):
     """Controlled error to escape event sequence."""
 
+class PreciousObjectError(Exception):
+    """Precious object modified or removed error."""
 
 class VisitError(Exception):
     """Exception while visiting."""
@@ -484,14 +486,25 @@ class ASTVisitor:
 
                 attr_value = getattr(node, attr_name)
                 if not isinstance(attr_value, (tuple, list)):
-                    self._visit_and_modify(node, attr_name)
+                    result = self._visit_and_modify(node, attr_name)
+                    if isinstance(attr_value, ScoffASTObject):
+                        if result is None or result is True:
+                            if attr_value.precious:
+                                raise PreciousObjectError(
+                                    "precious object modified or removed"
+                                )
                 else:
 
                     modified_statements = {}
                     to_delete = []
                     for idx, statement in enumerate(attr_value):
                         result = self._visit_and_modify(statement)
-
+                        if isinstance(statement, ScoffASTObject):
+                            if result is None or result is True:
+                                if statement.precious:
+                                    raise PreciousObjectError(
+                                        "precious object modified or removed"
+                                        )
                         if result is None:
                             to_delete.append(idx)
                         elif not isinstance(result, bool):

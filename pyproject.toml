@@ -7,7 +7,7 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = "^3.8"
-textx = "^2.3.0"
+textx = "^3.1.0"
 
 [tool.poetry.dev-dependencies]
 coverage = "^5.5"

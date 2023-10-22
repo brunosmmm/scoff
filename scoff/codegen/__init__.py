@@ -87,22 +87,21 @@ class CodeGenerator:
         gen_method = None
         if hasattr(self, gen_method_name):
             gen_method = getattr(self, gen_method_name)
-        elif hasattr(element, "generate_code"):
+            return gen_method(element, **kwargs)
+        if hasattr(element, "generate_code"):
             # try builtin code generation method
             gen_method = getattr(element, "generate_code")
-        elif element.__class__.__bases__:
+            return gen_method(**kwargs)
+        if element.__class__.__bases__:
             # try base class
             alt_gen_method_name = (
                 f"gen_{element.__class__.__bases__[0].__name__}"
             )
             if hasattr(self, alt_gen_method_name):
                 gen_method = getattr(self, alt_gen_method_name)
+                return gen_method(**kwargs)
 
-        if gen_method is None:
-            raise TypeError(
-                "cannot generate code for object type " '"{}"'.format(cls_name)
-            )
-        return gen_method(element, **kwargs)
+        raise TypeError(f"cannot generate code for object type {cls_name}")
 
     # builtin types
 

@@ -86,7 +86,7 @@ class ScoffASTObject:
                             )
                         generic_alias_used = True
 
-    def _check_generic_alias(self, slot_type, value):
+    def _check_generic_alias(self, slot_name, slot_type, value):
         """Check when using generic alias."""
         if isinstance(slot_type, GenericAlias):
             # cannot use isinstance directly
@@ -108,8 +108,10 @@ class ScoffASTObject:
                         else:
                             expected = repr(slot_type)
                         raise TypeError(
-                            f"expected {expected}, "
-                            f"got {_value.__class__.__name__}"
+                            f"in class {self.__class__.__name__}"
+                            f", slot {slot_name},"
+                            f"expected: {expected}, "
+                            f"got: {_value.__class__.__name__}"
                         )
             return True
         return False
@@ -133,7 +135,7 @@ class ScoffASTObject:
             annotations = self.__init__.__annotations__
             if slot_name in annotations:
                 slot_type = annotations[slot_name]
-                if self._check_generic_alias(slot_type, value):
+                if self._check_generic_alias(slot_name, slot_type, value):
                     return
 
                 try:
@@ -145,7 +147,7 @@ class ScoffASTObject:
                         for arg in slot_type_args:
                             if arg is None:
                                 continue
-                            self._check_generic_alias(arg, value)
+                            self._check_generic_alias(slot_name, arg, value)
                         return
                     else:
                         raise ASTDefinitionError("unknown typing error")

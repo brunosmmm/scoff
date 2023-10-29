@@ -109,7 +109,7 @@ class ScoffASTObject:
                             expected = repr(slot_type)
                         raise TypeError(
                             f"in class {self.__class__.__name__}"
-                            f", slot {slot_name},"
+                            f", slot {slot_name}: "
                             f"expected: {expected}, "
                             f"got: {_value.__class__.__name__}"
                         )
@@ -158,7 +158,9 @@ class ScoffASTObject:
                     else:
                         expected = repr(slot_type)
                     raise TypeError(
-                        f"expected {expected}, "
+                        f"in class {self.__class__.__name__}"
+                        f", slot {slot_name}: "
+                        f"expected: {expected}, "
                         f"got {value.__class__.__name__}"
                     )
 

@@ -99,7 +99,7 @@ class CodeGenerator:
             )
             if hasattr(self, alt_gen_method_name):
                 gen_method = getattr(self, alt_gen_method_name)
-                return gen_method(**kwargs)
+                return gen_method(element, **kwargs)
 
         raise TypeError(f"cannot generate code for object type {cls_name}")
 

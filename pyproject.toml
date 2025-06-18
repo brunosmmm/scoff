@@ -7,9 +7,9 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = "^3.8"
-textx = "^3.1.0"
+textx = "^4.2.2"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 coverage = "^5.5"
 black = "^20.8b1"
 

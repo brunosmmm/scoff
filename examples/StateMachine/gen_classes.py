@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Generate AST classes from grammar."""
 
-import pkg_resources
+import importlib.resources as resources
 from scoff.misc.textx import parse_textx_grammar, build_python_class_text
 
 if __name__ == "__main__":
 
-    the_grammar = pkg_resources.resource_filename("sm", "state_machine.tx")
+    the_grammar = resources.files("sm").joinpath("state_machine.tx")
     grammar_rules = parse_textx_grammar(the_grammar)
 
     dump_txt = """

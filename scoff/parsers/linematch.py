@@ -44,7 +44,7 @@ class LineMatcher(TokenMatcher):
         ]
 
         self._gobble = gobble
-        gobble_str = b"\s*" if gobble is True else b""
+        gobble_str = rb"\s*" if gobble is True else b""
         super().__init__(
             re.compile(
                 gobble_str + b"".join([token.regex for token in self._tokens]),

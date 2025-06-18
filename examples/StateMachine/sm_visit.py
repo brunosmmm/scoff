@@ -2,7 +2,7 @@
 """Parse and visit state machine."""
 
 import sys
-import pkg_resources
+import importlib.resources as resources
 from argparse import ArgumentParser
 from collections import deque
 from scoff.base.grammar import parse_file
@@ -106,7 +106,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    sm_grammar = pkg_resources.resource_filename("sm", "state_machine.tx")
+    sm_grammar = resources.files("sm").joinpath("state_machine.tx")
     # load grammar and file
     text, ast = parse_file(args.fname, sm_grammar, STATE_MACHINE_CLASSES)
 

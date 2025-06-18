@@ -2,11 +2,11 @@
 
 import re
 from collections import deque
-from typing import Union, Any, List, Deque, Tuple, Dict, Callable, Optional
+from typing import Union, Any, List, Deque, Tuple, Dict, Callable
 from scoff.parsers.linematch import MatcherError, LineMatcher
-from scoff.parsers.token import TokenMatcher
+from scoff.parsers.token import SimpleToken, SimpleTokenField, TokenMatcher
 
-EMPTY_LINE = re.compile(b"\s*$")
+EMPTY_LINE = re.compile(rb"\s*$")
 
 
 class ParserError(Exception):
@@ -72,13 +72,7 @@ class DataParser:
         self,
         candidates: List[TokenMatcher],
         position: int,
-    ) -> Tuple[
-        int,
-        Optional[LineMatcher],
-        Optional[Dict[int, str]],
-        Optional[str],
-        Optional[bytes],
-    ]:
+    ) -> Tuple[int, LineMatcher, Dict[str, str]]:
         if self._consume:
             m = EMPTY_LINE.match(self._data, position)
             if m is not None:

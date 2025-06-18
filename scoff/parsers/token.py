@@ -3,7 +3,7 @@
 from typing import Union, Tuple, Dict, Optional
 import re
 
-WHITESPACE = re.compile(b"\s+")
+WHITESPACE = re.compile(rb"\s+")
 
 
 class MatcherError(Exception):
